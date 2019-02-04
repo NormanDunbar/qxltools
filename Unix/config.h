@@ -78,10 +78,10 @@
 #define HAVE_LIMITS_H 1
 
 /* Define if you have the <readline/history.h> header file.  */
-/* #define HAVE_READLINE_HISTORY_H 1 */
+#define HAVE_READLINE_HISTORY_H 1
 
 /* Define if you have the <readline/readline.h> header file.  */
-/* #define HAVE_READLINE_READLINE_H 1 */
+#define HAVE_READLINE_READLINE_H 1
 
 /* Define if you have the <sys/time.h> header file.  */
 #define HAVE_SYS_TIME_H 1

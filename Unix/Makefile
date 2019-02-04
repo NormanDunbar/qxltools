@@ -2,7 +2,7 @@
 srcdir = ..
 top_srcdir = ..
 VPATH =  ..
-LIBS =  -lm 
+LIBS = -lreadline -lm 
 CFLAGS = -g -O2 -I. -I$(srcdir) -Wall
 CC=gcc
 DEFS=-DHAVE_CONFIG_H

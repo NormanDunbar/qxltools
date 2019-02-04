@@ -4,6 +4,9 @@ running configure, to aid debugging if configure makes a mistake.
 configure:534: checking for gcc
 configure:647: checking whether the C compiler (gcc  ) works
 configure:663: gcc -o conftest    conftest.c  1>&5
+configure:660:1: warning: return type defaults to 'int' [-Wimplicit-int]
+ main(){return(0);}
+ ^~~~
 configure:689: checking whether the C compiler (gcc  ) is a cross-compiler
 configure:694: checking whether we are using GNU C
 configure:703: gcc -E conftest.c
