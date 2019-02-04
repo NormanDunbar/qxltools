@@ -1,0 +1,127 @@
+				Hey, xemacs it's ==>   -*-indented-text-*-
+
+This document discusses techniques that may be used to transfer large,
+binary files (QXL.WIN for example) between various systems.
+
+The following operating systems are discussed Windows
+(NT/Win9x/Win3.1), Linux and QDOS.
+
+The following methods are discussed, TCP/IP networking, serial
+connections, disk transfer.
+
+The information in this file is primarily aimed at users who wish to
+migrate data between QXL.WIN files QXL/QPC and Q40.
+
+Supporting software
+-------------------
+
+The qxltool program is available as source code (all platforms) and
+binaries for Linux, Win32, DOS and QDOS. This program will read and
+(optionally) write QXL.WIN files under these operating systems. A Perl 
+script is provided (qxlcopy.pl) to copy multiple files from a QXL.WIN
+file into the host operating system. Due to the powerful, portable
+cross-platform capabilities of Perl, the same script is available for
+all qxltool supported platforms.
+
+Compression and Disks
+---------------------
+
+When using slow devices (serial or parallel networking, direct serial
+connection), then it is advisable to compress the file first. Industry 
+standard compression programs are available on all platforms.
+
+gzip	: Compresses a single file. QDOS executable, handled by WinZip 
+	  or Unix gzip program.
+
+bzip2	: Compresses a single file, much better compression than gzip, 
+	  albeit slower and memory intensive. Source and binary
+	  distributions for Linux, Windows and QDOS.
+
+zip	: Compressor/archiver. InfoZip distribution for Linux, Windows 
+	  and QDOS. Compatible with WinZip and pkzip on Windows. 
+
+The zipsplit program may be used to split up Zip files to the size of
+the largest file in the archive (which may or may not fit on a floppy
+disk).
+
+The QDOS 'bruz' archiver uses the industry standard 'tar' and 'gzip'
+archiver and compressor to produce archives that may be split over
+arbitrarily sized media (e.g. floppy disks). The archive may be
+reassembled on a Linux or Windows system and the original data
+retrieved (using tar/gzip or WinZip respectively).
+
+Windows & Linux
+---------------
+
+The easiest method is to use TCP/IP networking, if the transfer is
+between two Windows boxen, two Linux boxen, or a Linux and a Windows
+system.
+
+The easiest method is ethernet, network cards and a small hub are
+extremely cheap and cost effective. Setting up TCP/IP networking in
+both Windows and Linux is trivial. Once the hardware has been
+configured, files may easily be transfered.
+
+Between two Windows boxen, the easiest may is to enable 'network
+drives' for the relevant directories and use Explorer / File Manager
+to copy the files as required.
+
+Using Linux, export the relevant file systems using NFS and either
+copy (cp) the files or use a file manager.
+
+Transfer between Linux and Windows may be easily achieved using either
+FTP or 'Samba', which allows you to see Unix disks as 'network drives'
+under Windows and Windows disks ('network drives') as NFS mounted
+disks under Unix (using smbmount).
+
+If you don't have or wish to invest ethernet hardware, then you can
+run TCP/IP over a serial cable or a parallel cable. While this is
+slower than ethernet, you still get full network functionality,
+including 'network drives' and NFS exported drives. Using serial or
+parallel IP (PLIP) between two Linux boxen is very simple; just start
+pppd on each box. Using serial or parallel networking between two
+Windows boxen is also simple; just create a 'direct connection'
+network.
+
+I've never managed to achieve PLIP between Windows and Linux (it was
+more cost effective to go and buy the ethernet hardware:-), however
+there is a fair amount of information about it on the internet. It is
+easy to achieve serial IP networking using PPP and a null modem cable.
+
+Create a Windows DUN (Dial Up Networking) entry on the Windows box;
+use the supplied 'lappy' script on the Linux box to provide the
+necessary modem responses to Windows and then start up PPP on Linux.
+
+Windows / Linux to QDOS
+-----------------------
+
+Copying large binary files between Windows or Linux to QDOS is
+somewhat more difficult because QDOS does not, sadly, support any form
+of TCP/IP networking.  It is however possible to achieve painless
+transfer using a variety of techniques.
+
+If the QDOS system in question is QXL, then it is advisable to perform
+the transfer from DOS or Windows, the performance of the QXL serial
+port is extremely poor and cannot transfer more than 2000 char/sec
+regardless of the baud rate. For example, if you wished to transfer a
+QXL.WIN file (or parts thereof) from QXL/Windows to Q40, it would be
+easier to either transfer the whole QXL.WIN file from Windows over a
+serial cable, or to extract individual files using 'qxltool' in
+Windows and transfer single files to the Q40.
+
+If the transfer involves QDOS systems, then zmodem is good file
+transfer protocol to use. It is supported in QDOS by 'QTPI', both send
+and receive, and by by stand-alone programs (rz and sz), or build your
+own from the QTPI/xpr source code archives.
+
+QTPI supports a scripting capability that enables users to write their
+own bespoke file transfer facility.
+
+Zmodem is supported by most (all known to the author) Windows
+communications programs (HyperTerminal, Procomm and several others
+those names I forget). Zmodem is available in Unix using the rz/sz
+programs.
+
+
+
+Jonathan Hudson (jrhudson@bigfoot.com)

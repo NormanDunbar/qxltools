@@ -1,0 +1,14 @@
+1. For Unix & Windows NT
+
+   make 
+
+   copy qxltool to a suitable place
+
+2. MSDOS
+
+   make dos
+
+3. QDOS
+
+   make qdos
+

@@ -1,0 +1,104 @@
+#!/usr/bin/perl
+
+# This program may be used to listen for modem like commands on a
+# serial port and give approriate answers. The purpose is to allow
+# Windows DUN *Dial Up Networking) start a PPP connection over a null
+# modem cable to a Linux box.
+
+# Edit 'lappy' (so called because it was used to network my laptop
+# before I bought a PCMCIA Network card), and set the required devices
+# and IP addresses. Run lappy (backgrounded if you like), start a DUN
+# connection in Windows. Enjoy cheap networking. Samba will allow you
+# to share Unix devices with Windows, and smbmount allows you to mount
+# Windows disks in Unix. Data transfer made very easy.
+
+# Given the extremely low cost of 10-baseT cards and hubs, an ethernet
+# solution is recommended.
+
+use IO::Handle;
+
+$flag = 0;
+$flag = 0;
+
+sub WaitFor 
+{
+    my ($fh, $time, @str) = @_;
+    my ($rin, $nfd, $n, $val);
+    my $key;
+    my $a = "";
+    my $nn = pack("l",0);
+loop:
+
+    while(1)
+    {
+	vec($rin, fileno($fh), 1) = 1;
+	($nfd,$time) = select($rin,undef,undef,$time);
+	if($nfd == 0) 
+	{
+	    last loop;
+	}
+	elsif ($nfd > 0)
+	{
+	    if (vec($rin, fileno($fh), 1))
+	    {
+		my ($n,$nc);
+		if(ioctl($fh, 0x541B ,$nn) == 0)
+		{
+		    $nc = unpack("l", $nn);
+		    if($nc && ($n = sysread $fh, $key, $nc))
+		    {
+			$a = $a.$key;
+			foreach $subs (@str)
+			{
+			    if ($a =~ /$subs/)
+			    {
+				$val = $flag ? $subs : $a;
+				last loop;
+			    }
+			}
+		    }
+		}
+	    }
+	}
+	else
+	{
+	    die "Select!!!!";
+	}
+    }
+    $val;
+}
+
+sub Send
+{
+    local ($fh,$str) = @_;
+    syswrite $fh,$str,length($str);
+}
+
+$modem = "/dev/ttyS1";
+
+$res = `stty crtscts cbreak -echo raw speed 115200 <$modem`;
+
+STDOUT->autoflush(1);
+STDERR->autoflush(1);
+
+while (1)
+{
+  open(SER,"+>".$modem) || die "serial problems";
+  while(1)
+  {
+    
+    $res = WaitFor(SER, 10.0, ("\r"));
+
+    if ($res =~ /ATD/) 
+    {
+      Send(SER, "\rCONNECT 115200\r\n");
+      last;
+    }
+    else
+    {
+      Send(SER, "\rOK\r");
+    }
+  }
+  
+  system "/usr/sbin/pppd -detach -p :192.168.1.3 $modem";
+}

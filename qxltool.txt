@@ -1,0 +1,832 @@
+                                     Hey, xemacs it's ==>   -*-indented-text-*-
+qxltool
+=======
+
+qxltool is a program to access QXL.WIN files from a native operating
+system (Linux, DOS, Win 3.x, Win 95, NT, OS2, or even QDOS). 
+
+qxltool allows read (and optionally), write access to the QXL.WIN
+file, making directories, deleting, formatting etc.
+
+PLEASE ENSURE YOUR QXL.WIN FILE IS BACKED UP BEFORE USING qxltool, as:
+
+1. The documentation covering QXL.WIN files is subject to the usual
+   QDOS 'Official Secrets Act' and is not (to the author's knowledge)
+   openly and freely available to non-commercial programmers. This
+   program is based on the only available information, 'qxlwin.html'
+   as provided in the UQLX distribution. Sad, isn't it ? Why don't the
+   vendors put this sort of useful info on their web sites ? Can't be
+   that they don't like useful free programs that you haven't paid
+   for, or that they are just waiting for QDOS to die because no
+   one knows how to program it. No, that would be foolish. Beats me.
+
+2. Given the sad documentation situation, you might not like the idea
+   of my program writing to your QXL.WIN file. That's your choice.
+
+If qxltool corrupts your precious data, then more fool you for using it;
+still, you can blame the information hoarders.
+
+The file qxlwin.html on which this program is based contains
+significant errors! You have been warned.
+
+I would also caution STRONGLY against running QXL and qxltool at the same
+time. Actually, I'd recommend that you don't run QXL at all; install
+Linux, use uqlx, and qxltool to transfer the files out of the QXL.WIN
+file into the Unix file system. Just so NO to closed software.
+
+License
+=======
+
+GPL: Please see file 'COPYING'.
+
+Installation
+============
+
+Unix
+----
+
+To install the supplied binary on Linux (or other Unix)
+
+   1) cd Unix
+   2) ./configure
+   3) make
+   4) strip qxltool
+   5) # copy qxltool to a suitable location
+
+DOS & OS2
+---------
+
+Find a compiler, write a Makefile and build
+
+Win32 (Win95, Win98, NT)
+------------------------
+
+Copy the file nt\qxltool.exe onto your path.
+
+or
+
+   1) cd NT
+   2) ./configure
+   3) make
+   4) strip qxltool.exe
+   5) # copy qxltool.exe to a suitable location
+
+QDOS
+----
+
+The qxltool source compiles under c68 (and runs :-). 
+
+Copy the file QDOS_qxltool to a suitable directory.
+
+Test Status
+===========
+
+The different OS varients of qxltool have been tested by the author as 
+follows:
+
+	OS		Status
+	--------------------------
+	Linux		Tested
+	NT/Win9x	Tested, marginally
+	QDOS		Not Tested
+	DOS		Not Tested
+	OS2		Not Tested
+
+Usage
+=====
+
+qxltool needs to know where the QXL.WIN file is located; in order of
+precedence:
+
+	1. From the command line
+		qxltools file_name
+	2. From the environment
+	3. Defaults
+		/dos/QXL.WIN	 (Linux)
+		C:\QXL.WIN	 (DOS,Win*,OS2)
+		win2_tmp_qxl.win (QDOS)
+
+The environment variable is named QXL_FILE and may be set as:
+
+    Linux
+    (sh, bash, ksh)	
+	   export QXL_FILE=/dos/QXL.WIN
+
+    (csh,tcsh)
+	   setenv QXL_FILE /dos/QXL.WIN
+
+
+     DOS etc
+	   set QXL_FILE=H:\QXL.WIN
+
+     QDOS
+           setenv "QXL_FILE=win2_tmp_qxl.win"
+
+(Obviously) the file name is setup dependent.
+
+qxltool defaults to a readonly QXL.WIN file to protect your data,
+if you're feeling brave, you can run qxltool is read-write mode
+by giving a '-w' option.
+
+	qxltool -w /cdrom/qxl.win
+
+A single command can be given with a -c option.
+
+	qxltool -c lslr /tmp/qxl.win
+
+qxltool can attempt to format and use a virgin QXL.WIN file by giving
+more than three non-option parameters:
+
+	qxltool -w file_name size_in_MB Label0 ... LabelN 
+
+	for example:
+
+	qxltool -w /tmp/qxl.win 8 QXL Disk Label
+
+	Would create an 8Mb QXL file (/tmp/qxl.win) with a disk label
+	"QXL Disk Label".
+
+In order to format an existing QXL file (or partition), then you must
+give a -W option. This is to protect people from accidentally
+formatting an existing file/partition.
+
+
+	qxltool -W /tmp/oldqxl.win 8 QXL Disk Label
+
+Under QDOS, the console window will fill the display by default. You
+can change the size of the display using the singularly appropriate
+environment variable "QXL_CON".
+
+     For example:
+           setenv "QXL_CON=484x240a16x10"
+
+qxltool presents you with a prompt '> ', and accepts the following
+commands.
+
+	info	-	Shows some info about the QXL.WIN file
+	ls	-	Lists the current QXL.WIN directory
+	lslr	-	Lists the current QXL.WIN directory and all 
+                        sub-directories.
+	cat	-	types or copies a file from QXL.WIN
+	cp	-	types or copies a file from QXL.WIN
+	cd	-	changes the QXL.WIN working directory
+	pwd	-	displays the current QXL.WIN directory
+	exit	-	exits the qxltool program
+	quit	-	exits the qxltool program
+	write	-	write a file to the QXL.WIN file.
+	rm	-	Deletes a file
+	rmdir	-	Deletes an empty directory
+	version -	Displays version number
+	help	-	Displays some unhelpful text
+	dump    -	Dumps out whole directory structure, including
+			inconsistent entries (0 or -ve file size
+			with name length and/or valid cluster pointer.
+			Viewing this information may not do much for
+			your confidence in the QPC or QXL software
+			that wrote the original QXL.WIN, particularly
+			given the state of the documentation.
+        init	-	Initialises exisiting QXL.WIN
+        mkdir	-	Creates a directory. There must be no name
+			clash with an existing file.
+        open	-	Opens a new QXL.WIN file
+        close	-	Closes current QXL.WIN file
+        format	-	Create a new QXL.WIN file
+        shell	-	Spawns a shell
+	clone	-	copies all or part of a QXL.WIN file to
+			another QXL.WIN file.
+        RW      -	Sets read-write mode for filesystem (O_RDWR)
+	RO	-	Sets read-only mode for filesystem (O_RDONLY)
+
+	and for mc68000 systems only, as the geometry coding has yet
+	to be revealed (no doubt RZ will crack that too!).
+
+	fix_geometry -  Fixes the disk geometry to what SMSQ expects
+
+
+qxltool also accepts commands from a file using normal STDIN
+redirection, useful for populating a QXL.WIN file for use with the
+QPCDEMO program.
+
+    qxltool <mycommands
+
+Or, for Unix at least, using shell 'here-doc' syntax.
+
+    #/bin/sh
+    
+    echo "Create a new QXL file for QPCDemo
+
+    qxltool <<EOF
+    wr boot
+    mkdir exe
+    cd exe
+    wr /ql/exe/qtpi 
+    wr /ql/exe/unzip
+    cd
+    mkdir extn
+    cd extn
+    wr /ql/qlsoft/qpac2 
+    EOF
+
+    echo "OK done that"
+
+Commands may have their output redirected. 
+
+	 >file	  - redirect output to 'file' and overwrite.
+	 >>file	  - redirect output to 'file' and append.
+	 | prog	  - pipes output to 'pipe'
+
+Please note that '| prog' syntax requires a real operating system and
+will not work on DOS, Win 3.* or Win95. It is currently untested on NT
+or OS2.
+
+It is, of course, perfectly functional for Linux.
+
+   > cat boot | vless
+
+I expect it also works for QDOS.
+
+For 'DOS like' (DOS,Win 3*, Win 95, NT, OS2) operating systems,
+redirected files for 'cat' and 'cp' are opened in binary mode and thus
+do not translate QDOS LF to 'DOSlike' CR/LF. This translation may be
+forced by the commands 'tcat' and 'tcp'.
+
+   > tcat boot >boot.txt
+
+In such OS, it is also possible to write DOS text (CR/LF) files to the
+QXL.WIN file removing the CR, using the 'twrite' command.
+
+Command Details
+---------------
+
+Please note that for your convenience, 'qxltool' uses the standard
+concept of a current working directory; listing and copying works from
+the current directory or relative to it.
+
+All examples are taken from the demo QXL.WIN file on Peta Ja\"ger's
+web site. 
+
+Comments are preceeded by a hash.
+
+cd: Changes the current working directory.
+------------------------------------------
+
+ > cd	    # changes to top level (root) directory
+    
+ > ls	    # lists current directory
+ CUESHELL                                  192       (Directory)
+ DISA                                      256       (Directory)
+ LD                                       1088       (Directory)
+ QSPREAD                                   128       (Directory)
+ util                                     1600       (Directory)
+ code                                      832       (Directory)
+ boot                                     2022 21-04-97 02:43:22 
+ MODEM                                     128       (Directory)
+ SPIELE                                   1408       (Directory)  
+    
+ > cd MODEM
+
+ > ls
+ QTPI                                     1088       (Directory)
+ QFAX                                      832       (Directory)
+
+ > cd QTPI
+ > ls
+ QBook_dat                                3590 11-10-96 01:55:47 
+ qtpi                                   113624 19-04-97 18:57:38 (50)
+ qtpi-keys_dat                             358 11-10-96 00:54:33 
+ QTPI160_man                              7099 11-10-96 00:54:40 
+ QTPIMenu_dat                              224 11-10-96 00:54:42 
+ README                                    558 11-10-96 00:54:46 
+ XPR351_txt                                199 11-10-96 00:56:54 
+ xprascii_library                        19982 11-10-96 00:56:54 (382)
+ xprkermit_library                       32070 11-10-96 00:56:54 (612)
+ xprsealink_library                      24622 11-10-96 00:56:54 (292)
+ xprxmodem_library                       23046 11-10-96 00:56:54 (294)
+ xprymodem_library                       27146 11-10-96 00:56:54 (212)
+ xprzmodem_library                       37506 11-10-96 00:57:37 (50)
+ XPRZ352_txt                               341 11-10-96 00:57:35 
+ qtpi_dat                                  941 11-10-96 01:57:35 
+
+ls: Lists current directory (see above)
+---------------------------------------
+lslr: Lists current directory and all sub-directories
+-----------------------------------------------------
+
+For example:
+
+ > cd
+ > cd MODEM
+ > lslr
+ QTPI                                     1088       (Directory)
+ QTPI_QBook_dat                           3590 11-10-96 01:55:47 
+ QTPI_qtpi                              113624 19-04-97 18:57:38 (50)
+ QTPI_qtpi-keys_dat                        358 11-10-96 00:54:33 
+ QTPI_QTPI160_man                         7099 11-10-96 00:54:40 
+ QTPI_QTPIMenu_dat                         224 11-10-96 00:54:42 
+ QTPI_README                               558 11-10-96 00:54:46 
+ QTPI_XPR351_txt                           199 11-10-96 00:56:54 
+ QTPI_xprascii_library                   19982 11-10-96 00:56:54 (382)
+ QTPI_xprkermit_library                  32070 11-10-96 00:56:54 (612)
+ QTPI_xprsealink_library                 24622 11-10-96 00:56:54 (292)
+ QTPI_xprxmodem_library                  23046 11-10-96 00:56:54 (294)
+ QTPI_xprymodem_library                  27146 11-10-96 00:56:54 (212)
+ QTPI_xprzmodem_library                  37506 11-10-96 00:57:37 (50)
+ QTPI_XPRZ352_txt                          341 11-10-96 00:57:35 
+ QFAX                                      832       (Directory)
+ QFAX_doc_qfax_ref                       10775 11-10-96 00:59:39 
+ QFAX_doc_qfax280_man                   210141 11-10-96 00:59:39 
+ QFAX_text2g3                            62626 19-04-97 19:02:52 (2182)
+ QFAX_qfv                                91936 19-04-97 19:02:36 (762)
+ QFAX_qfax                               71448 19-04-97 19:02:18 (894)
+ QFAX_printfax                           77986 19-04-97 19:01:58 (986)
+ QFAX_qfax_font                          14336 19-04-97 19:03:59 
+ QFAX_qfax_dat                             310 19-04-97 19:07:16 
+
+pwd: Display current directory
+------------------------------
+ > pwd
+ cwd is "MODEM"
+ > cd QFAX
+ > pwd
+ cwd is "MODEM_QFAX"
+ > cd
+ > pwd
+ cwd is ""
+
+cat: Copy a file (to "stdout" or redircted) (tcat for DOS text files)
+---------------------------------------------------------------------
+cp:  Copy a file (to "stdout" or redircted) (tcp  for DOS text files)
+---------------------------------------------------------------------
+
+ > cd MODEM_QFAX
+ > ls
+ doc_qfax_ref                            10775 11-10-96 00:59:39 
+ doc_qfax280_man                        210141 11-10-96 00:59:39 
+ text2g3                                 62626 19-04-97 19:02:52 (2182)
+ qfv                                     91936 19-04-97 19:02:36 (762)
+ qfax                                    71448 19-04-97 19:02:18 (894)
+ printfax                                77986 19-04-97 19:01:58 (986)
+ qfax_font                               14336 19-04-97 19:03:59 
+ qfax_dat                                  310 19-04-97 19:07:16 
+ qfax_phone                                275 19-04-97 19:07:00 
+
+ > cat doc_qfax_ref |more
+ V2.8                                                           Woodlands, Sep'96
+
+          QFAX - Facsimile System for Class 2.0/2 fax modems
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                                and
+                  SMS2 and QDOS Compatible computers
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                       v2.8 Quick Reference Guide
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~           
+ 'qfax'
+ ~~~~~~
+   ex qfax;`[-2 | -2.0] [-i ini] [-l logfile] [-v] [-x] [-eN] [-bN]
+                          -s phone file | -S phone [file] | -z phone file
+
+   -2   force Class 2
+   -2.0 force Class 2.0
+   -v   displays progress/debug information on the console (stderr device)
+   -l   defines a log file for process/debug info.
+   -x   suppresses the c68 `Any key to exit' message
+   -i   defines additional Hayes commands to be sent before dialing.
+   -e   defines exit code.
+	
+        ...................... 
+
+        WAIT2SEND       WAIT                    YES
+        WIDTH_RECEIVE   WIDTH_R                 0
+        WIDTH_SEND      WIDTH_S                 0
+        XDIAL           XDIAL                   (none)
+
+ jh 05/10/96
+ line 243/277 (END)
+ >
+
+For DOSLike systems:
+
+ > tcat doc_qfax_ref
+
+To save binary files
+
+ > cat qfax >/ql/exe/qfax
+ > cat qtpi >qtpi
+
+When a QDOS program is copied using 'cat' or 'cp', then if the output
+device is 'seekable' (a file, not a pipe or terminal), then an 'XTcc'
+data block (as used by the xtc68 cross compiler) is added to the
+executable. These XTcc blocks are recognised by QLAY, uqlx/qcp and
+some versions of InfoZip's Zip program to preserve QDOS data space for
+executable programs.
+
+To append text files
+
+ > cat boot >qlstuff.txt	# create file
+ > cat README >>qlstuff.txt	# append
+
+info: Returns information about the QXL.WIN file
+-----------------------------------------------
+
+Information is returned as follows:
+
+ > info
+ Info for QXL file /tmp/qxl.win
+ Label QPCD [QPCDEMO]
+ Sector size 2048 bytes
+ Total sectors 1536 (3.00 Mb, on disk 3145728 b)
+ Free  sectors 68 (136.00 Kb)
+ Formatted 7, rand 7838, access 215
+
+Note that the tested QXL.WIN file, the volume label length does not
+agree with the length of volume label. In this case, qxltool will display
+what it believes to be the correct volume label in square brackets
+(see line 2 of the example above). Choose who you believe. Of course,
+the non-existant documentation might be wrong ....
+
+version: Shows the version information
+--------------------------------------
+
+ > version
+ qxltool 1.07, Jul 27 1999 for Linux
+
+help: May not be very helpful
+-----------------------------
+
+ > help
+ Commands in qxltool 1.07
+
+        cd
+        lslr
+        ls
+        dump
+        pwd
+        cat
+        cp
+        info
+        quit
+        exit
+        init
+        wr
+        rmdir
+        rm
+        mkdir
+        version
+        help
+        open
+        close
+        format
+        shell
+        clone
+	RO
+	RW
+
+ Read the fine manual for more information
+
+rm: Deletes a file
+------------------
+
+ > rm boot
+
+rmdir: Deletes an empty directory
+---------------------------------
+
+ > rmdir FAX
+
+write: copies a file into the QXL.WIN file system. 
+--------------------------------------------------
+
+ > write native/file.spec file_spec
+ > write native/file.spec
+
+This command takes one for two parameters. The first is the native
+(Linux/DOS/Win etc) file name, the second is, optionally the name the
+file will have in the QXL.WIN file system. If the second parameter is
+not given, the QDOS file name is constructed by removing any directory
+part and replacing '.' with '_'.
+
+Note that the above examples have the same effect. Likewise
+
+ > cd FAX
+ > write qxltool.c
+
+ > cd
+ > wr qxltool.c FAX_qxltool_c
+
+do the same.
+
+On DOS-like systems the 'twrite' ('twr') command translates DOS CR/LF
+to QDOS LF.
+
+ > twr DOS.txt
+ > twr readme.txt readme_txt
+
+init: Initialises exisiting QXL.WIN
+-----------------------------------
+
+You can specify a new label. All data is lost.
+
+ > init WOT! A new QXL file
+ Formatting .... Done
+ > info
+ Info for QXL file /tmp/qxl.win
+ Label WOT! A new QXL file
+ Sector size 2048 bytes
+ Total sectors 1536 (3.00 Mb, on disk 3145728 b)
+ Free  sectors 1532 (2.99 Mb)
+ Formatted 7, rand 13261, access 1
+
+mkdir: 	Creates a directory.
+----------------------------
+
+ > cd
+ > ls
+ FAX                                         0       (Directory) 
+ util                                     1600       (Directory) 
+ code                                      832       (Directory) 
+ > mkdir FAX_TEST
+
+ or
+
+ > cd
+ > cd FAX
+ > mkdir TEST
+
+There must be no name clash (so unlike QDOS, you cannot have existing
+candidate files for the new directory).
+
+open: Opens a new QXL.WIN file.
+
+ > open				# opens the default file
+ > open /tmp/qxl.test
+
+close: closes currently open file.
+---------------------------------
+
+ > close
+
+format: Create a new QXL.WIN file
+---------------------------------
+
+With no parameters, you are asked for new file name, size in Mb and
+label.
+
+ > format
+
+You may, if you wish, give these parameters as part of the command. 
+
+ > format /tmp/qxl.demo 8 This is an 8MB file
+
+The above line creates an 8Mb QXL file (/tmp/qxl.demo), with the label
+"This is an 8MB file".
+
+shell: Spawns a shell
+---------------------
+
+ > shell
+ 
+Type 'exit' in the shell to return to qxltool.
+
+You may also give shell commands.
+
+ > shell ls *.[ch]
+
+> shell ls -l *.[ch]
+ -rw-r--r--   1 jrh      users       33195 Apr 21 19:35 qxltool.c
+ -rw-r--r--   1 jrh      users        2048 Apr 21 18:27 qxltool.h
+ -rw-r--r--   1 jrh      users          23 Apr 21 18:27 version.h
+
+The shell command uses the environment variable SHELL (Unix) or
+COMSPEC (DOSlike) to find the default shell.
+
+QDOS also uses the environment variable "SHELL" to find a shell. This
+may be usable with, for example, Adrian Ives
+(Adrian_Ives@classic.msn.com) "shell" program.
+
+RW: Sets read-write mode for filesystem (O_RDWR)
+------------------------------------------------
+RO: Sets read-only mode for filesystem (O_RDONLY)
+-------------------------------------------------
+
+Above commands change read-write permissions.
+
+clone: Clones all or part of an QXL.WIN file
+--------------------------------------------
+
+ > clone src-spec dst-spec 
+
+The clone command copies some or all files from an QXL.WIN file to
+another QXL.WIN file. The copy may be to and from any arbitary
+directory. One of the QXL files is the existing, open file and the
+other is given in the command. You can copy either to or from the
+current file. The 'other' QXL.WIN file (i.e. the one not currently
+open is specified as:
+
+     FilenameSeparatorDirectory
+
+     where the separator is 
+
+     ':'   for Unix and QDOS
+     ';'   for DOS/Win/OS2
+
+The specifier for the open QXL.WIN file is just a directory name,
+with a single '_' used to indicate the top level directory. 
+
+Note that a '#' introduces a commentary.
+
+Some examples may help.
+
+$ qxltool /tmp/test.win		# open an existing QXL file
+> RW				# make it read-write
+> clone /dos/qpc.win:_ qpc	# copy the whole of the QPCDEMO 'disk'
+				# into a directory 'qpc_'
+> cd
+> ls
+  qpc                                        640       (Directory) 
+> cd qpc
+> ls
+CUESHELL                                   128       (Directory) 
+DISA                                       256       (Directory) 
+LD                                         768       (Directory) 
+QSPREAD                                     64       (Directory) 
+FAX                                          0       (Directory) 
+util                                      2944       (Directory) 
+code                                       896       (Directory) 
+MODEM                                      192       (Directory) 
+SPIELE                                    1472       (Directory) 
+boot                                      2058 10-07-97 01:09:15 
+
+Or to specify the existing QWL.WIN as the source:
+
+$ qxltool /tmp/qpc.win
+> ls
+CUESHELL                                   128       (Directory) 
+DISA                                       320       (Directory) 
+LD                                         896       (Directory) 
+QSPREAD                                    128       (Directory) 
+FAX                                          0       (Directory) 
+util                                      3008       (Directory) 
+code                                       960       (Directory) 
+MODEM                                      192       (Directory) 
+SPIELE                                    1536       (Directory) 
+boot                                      2058 10-07-97 01:09:15 
+
+> clone _ /tmp/qxl.win:qpc		  # copy to a QXL.WIN file,
+					  # into a qpc directory
+
+> close					  # close qpc.win
+> open /tmp/qxl.win			  # see what we've done
+> ls
+qpc                                        640       (Directory) 
+> cd qpc
+> ls
+CUESHELL                                   128       (Directory) 
+DISA                                       256       (Directory) 
+LD                                         768       (Directory) 
+QSPREAD                                     64       (Directory) 
+FAX                                          0       (Directory) 
+util                                      2944       (Directory) 
+code                                       896       (Directory) 
+MODEM                                      192       (Directory) 
+SPIELE                                    1472       (Directory) 
+boot                                      2058 10-07-97 01:09:15 
+
+If you're copying to or from the top level directory of the 'other'
+QXL.WIN, then you can omit the '_'.
+
+> clone /dos/qpc.win:_ qpc	# copy the whole of the QPCDEMO 'disk'
+> clone /dos/qpc.win: qpc	# copy the whole of the QPCDEMO 'disk'
+
+However the local top level directory must be denoted by '_'.
+
+Helpers : qxlcopy.pl
+--------------------
+
+The example script qxlcopy.pl shows how you can copy a whole QXL.WIN
+onto a native filesystem (where native == OS you're running
+under). This has been tested under Linux, NT and QDOS (uqlx). Yes,
+contrary to the mis-informed crap printed in QUANTA that you have to
+program Linux in C or ASM, we know that that perl is just one of
+__dozens__ of languages you can program in Linux. (I have this theory
+that you can tell when an operating system is in terminal decline;
+instead of promoting it, its proponents restort to slagging off the
+alternatives). Anyway, I digress.
+
+The document "xfer/xfer.txt" describes some methods by which you might
+move a large binary file between systems.
+
+Compiling
+---------
+
+qxltool, as distributed, compiles with gcc under Linux to produce the
+distributed Linux binary. dos-gcc is used, under Linux, to product the
+'DOSLike' binary. Porting to a native DOSLike compiler may produce a
+smaller binary at the loss of binary portability. Porting for other
+ANSI compilers should be easy. If you do not have the GNU 'readline',
+use the dos-gcc (__GO32__) solution; you may also need to remove a few
+other GNU-isms.
+
+The Win32 version is compiled with gcc for Win32 (mingw32).
+
+QLqxltool compiles using c68 (or at least xtc68), adopting the
+Makefile for QDOS should be trivial.
+
+License
+-------
+
+qxltool is (c) Jonathan R Hudson. 
+
+NO WARRANTY, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS, IN NO EVENT SHALL JONATHAN HUDSON BE LIABLE FOR ANY SPECIAL,
+INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
+FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
+WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Please see the file COPYING.
+
+The author would be grateful if distributors of programs derived from 
+qxltool would include a reference to where the original documentation
+may be found.
+
+Please report enhancements, spelling mistakes, bugs (and hopefully
+fixes) to the author.
+
+The QXL.WIN file format and QXL may possibly be trade marks or
+copyright of one or more of Tony Tebby, Jochen Merz and/or Miracle
+Systems. Alas, given the lack of documentation, it is impossible for
+me to tell.
+
+OS2 is a registered trademark of International Business Machines
+MSDOS, Windows, and the letters NT appear to be trademarks of
+Microsoft Corp. The above letters appear together (at least) 63 times
+in this document. These letters are included without the permission of
+Microsoft.
+
+Linux is freedom.
+
+'rqxl' beta releases:
+
+0.01	   18/04/98	     Initial release
+0.02	   19/04/98	     Adds readline for Unix, fixes XTcc block
+			     addition, added rm and rmdir, write.
+0.03       20/04/98	     Added init,format,mkdir
+0.04       21/04/98          Fixed some bugs (label for init) and
+                             documentation errors.
+qxltool:
+			
+1.00       22/04/98	     allow parameters to format
+                             optimise the code a bit.
+     
+1.01       02/05/98	     Enable compilation under QDOS (no change
+			     to other platforms.
+
+1.02       02/05/98	     Allow longer synomyns (write == wr). What
+                             the heck, add the QDOS binary.
+
+1.04       08/09/98	     Incorporated Richard Zidlickys's patches 
+			     to compile on more diverse Unix platforms
+
+			     Made readonly, added -w option and command
+			     line format options.
+
+1.05	   04/06/99	     Allowed existing files/partitions to be
+			     formatted (patch from Richard Zidlicky),
+			     combined with -W option.
+			     Y2K fix, memory leak fixed.
+
+1.06       16/06/99	     Further formatting patches from Richard Zidlicky
+			     Added some command line help.
+
+1.07	   28/07/99	     Added clone command. Added separate W32
+			     executable.
+
+1.08       06/08/99	     Fixed clone command.
+
+1.09	   ?		     Never released
+
+1.10	   06/11/99	     Pipe support for wxqt2
+
+1.11       06/02/00          Fixed a bug in writing files where the
+			     begining of the name matched a directory.
+
+1.12       08/02/00          Fixed typo that causeed runtime failure
+			     on bigendian Unix systems.
+
+1.13	   ?		     Possibly some more bug fixes
+
+1.14	   30/09/00	     Fixes 3 bug reported by Theirry Godefroy.
+			     1. Zero size files silently lost
+			     2. Files starting with > chr(127) not
+				listed.
+			     3. configure failed when libreadline
+				depended on libtermcap (typically
+				Mandrake releases of Linux).
+			     Various other tidy ups.
+
+
+Jonathan Hudson	<jrhudson@bigfoot.com>
+with help from
+Richard Zidlicky <Richard.Zidlicky@stud.informatik.uni-erlangen.de>
+
+
