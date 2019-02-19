@@ -28,7 +28,6 @@
 // me how I know!)
 //=========================================================================
 
-
 // Prints a map group's block details.
 void printMapGroup(unsigned block, char *usage, unsigned lastBlock) {
 
@@ -39,8 +38,9 @@ void printMapGroup(unsigned block, char *usage, unsigned lastBlock) {
     nextBlock = (block == lastBlock - 1) ? 0 : nextBlock;
     
     // Print the details. If it is the last block, it's data is zero.
-    printf("Block: %4u, Offset: %4u ($%.4x), Data: %4u ($%.4x) => %s\n",
-           block, 64 + (block * 2), 64 + (block * 2), nextBlock, nextBlock, usage);
+    // Blocks are always word sized, so 65535 is the biggest possible value.
+    printf("%5u ($%.4x) | %6u ($%.6x) | %5u ($%.4x) | %s\n",
+           block, block, 64 + (block * 2), 64 + (block * 2), nextBlock, nextBlock, usage);
 }
 
     
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
     // Display the details.
     printf("Summary of Map Header:\n");
     printf("Megabytes:             %6u\n"
-           "Total Sectors:         %6u ($%.4x)\n"
+           "Total Sectors:        %7u ($%.6x)\n"
            "Sectors per group:     %6u ($%.4x)\n"
            "Number of groups:      %6u ($%.4x)\n"
            "Sectors per map:       %6u ($%.4x)\n"
@@ -124,10 +124,13 @@ int main(int argc, char *argv[]) {
            numberOfFreeGroups, numberOfFreeGroups);
            
     // Display the map, in summary.
-    
+
     // The map blocks themselves, all of them.
-    printf("Summary of Map Blocks:\n");
-    for (short x = 0; x < groupsPerMap; x++) {
+    printf("Summary of Map Blocks:\n"
+           "Block No      | Map Address      | Next Block No | Block Usage\n"
+           "=================================================================\n");
+           
+    for (unsigned x = 0; x < groupsPerMap; x++) {
         printMapGroup(x, "Map", groupsPerMap);
     }
     
@@ -135,14 +138,14 @@ int main(int argc, char *argv[]) {
     printMapGroup(rootDirectoryId, "Root directory", firstFreeGroup);
 
     // The first 5 free blocks.
-    for (short x = 0; x < 4; x++) {
+    for (unsigned x = 0; x < 4; x++) {
         printMapGroup(firstFreeGroup + x, "Free block", numberOfGroups);
     }
     
     printf("...\n");    
 
     // The last 5 free blocks.
-    for (short x = numberOfGroups - 4; x < numberOfGroups - 1; x++) {
+    for (unsigned x = numberOfGroups - 4; x < numberOfGroups - 1; x++) {
         printMapGroup(x, "Free block", numberOfGroups);
     }
     
