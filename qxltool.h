@@ -63,24 +63,27 @@ extern void add_history(char *);
 
 typedef struct
 {
-    char id[4];
-    u_short namlen;
-    u_char name[20];
-    u_short dummy0 PACKED;
-    u_short rand;
-    u_short access;
-    u_short dummy1;
-    u_short sectc;
-    u_short dummy2[3];
-    u_short total;
-    u_short free;
-    u_short formatted;
-    u_short dummy3;
-    u_short first;
-    u_short direct;
-    u_long dlen PACKED; 
-    u_short dummy4[3];
-    u_short map[1];
+    char id[4];                 /* "QLWA"  */
+    u_short nameSize;           /* Size of 'disc' name */
+    u_char  name[20];           /* Disc name, space padded */
+    u_short spare PACKED;       /* Unused */
+    u_short rand;               /* System random number */
+    u_short access;             /* Update counter */
+    u_short interleave;         /* Interleave factor qxl = 0 */
+    u_short sectorsPerGroup;    /* Sectors per group */
+    u_short sectorsPerTrack;    /* Sectors per track qxl = 0 */
+    u_short tracksPerCylinder;  /* Tracks per cylinder qxl =  0 */
+    u_short cylindersPerDrive;  /* Cylinders per drive qxl = 0 */
+    u_short numberOfGroups;     /* Number of groups */
+    u_short freeGroups;         /* Number of free groups */
+    u_short sectorsPerMap;      /* Sectors per map */
+    u_short numberOfMaps;       /* Number of maps qxl = 1 */
+    u_short firstFreeGroup;     /* First free group */
+    u_short rootDirectoryId;    /* Root director number */
+    u_long  rootDirectorySize PACKED;   /* Root directory length */
+    u_long  firstSectorPart PACKED;     /* First sector in this partition qxl = 0 */
+    u_short parkingCylinder;    /* Park cylinder qxl = 0 */
+    u_short map[1];             /* The map starts here ... */
 } HEADER;
 
 typedef struct

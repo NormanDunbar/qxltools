@@ -176,16 +176,16 @@ static u_char *strim (u_char *s)
 
 static void h_normalise (HEADER * h)
 {
-    SW (h, namlen);
+    SW (h, nameSize);
     SW (h, rand);
     SW (h, access);
-    SW (h, sectc);
-    SW (h, total);
-    SW (h, free);
-    SW (h, direct);
-    SW (h, formatted);
-    SW (h, first);
-    SL (h, dlen);
+    SW (h, sectorsPerGroup);
+    SW (h, numberOfGroups);
+    SW (h, freeGroups);
+    SW (h, rootDirectoryId);
+    SW (h, sectorsPerMap);
+    SW (h, firstFreeGroup);
+    SL (h, rootDirectorySize);
     SW (h, map[0]);
 }
 
@@ -197,7 +197,7 @@ static void writeheader (QXL * qxl)
     lseek (qxl->fd, 0, SEEK_SET);
     qxl->h.access++;
     h = qxl->h;
-    h.sectc >>= 9;
+    h.sectorsPerGroup >>= 9;
     for(i = 0; i < sizeof(h.name); i++)
     {
         if(h.name[i] == 0) h.name[i] = ' ';
@@ -215,12 +215,12 @@ static void readheader (QXL * qxl)
     if (memcmp (qxl->h.id, "QLWA", 4) == 0)
     {
         /* Now create a fake directory record for the root directory */
-        qxl->root.length = qxl->h.dlen;
-        qxl->root.map = qxl->h.direct;
+        qxl->root.length = qxl->h.rootDirectorySize;
+        qxl->root.map = qxl->h.rootDirectoryId;
         qxl->root.type = 0xff;
         *qxl->root.name = 0;
         qxl->root.nlen = 0;
-        qxl->h.sectc <<= 9;
+        qxl->h.sectorsPerGroup <<= 9;
         strim ((char *) qxl->h.name);
     }
     else
@@ -394,13 +394,13 @@ static int processdir (QXL * qxl, QLDIR * buf, QLDIR * cur,
 static u_short getcluster (QXL * qxl, u_short o)
 {
     u_short c, n;
-    qxl->h.free--;
-    c = nextcluster (qxl, qxl->h.first, 0);
-    n = qxl->h.first;
+    qxl->h.freeGroups--;
+    c = nextcluster (qxl, qxl->h.firstFreeGroup, 0);
+    n = qxl->h.firstFreeGroup;
     if (o)
         updatecluster (qxl, o, n);
     updatecluster (qxl, n, 0);
-    qxl->h.first = c;
+    qxl->h.firstFreeGroup = c;
     return n;
 }
 
@@ -415,7 +415,7 @@ static u_short nextcluster (QXL * qxl, u_short c, short flag)
     d = swapword (d);
     if (d == 0 && flag)
     {
-        if (qxl->h.free)
+        if (qxl->h.freeGroups)
         {
             d = getcluster (qxl, c);
         }
@@ -439,11 +439,11 @@ static QLDIR *readqldir (QXL * qxl, QLDIR * cur)
 
     for (fcluster = cur->map; (fcluster && dlen);)
     {
-        lseek (qxl->fd, fcluster * qxl->h.sectc, SEEK_SET);
-        if (dlen < qxl->h.sectc)
+        lseek (qxl->fd, fcluster * qxl->h.sectorsPerGroup, SEEK_SET);
+        if (dlen < qxl->h.sectorsPerGroup)
             rlen = dlen;
         else
-            rlen = qxl->h.sectc;
+            rlen = qxl->h.sectorsPerGroup;
         read (qxl->fd, p, rlen);
         p += rlen;
         dlen -= rlen;
@@ -461,22 +461,22 @@ static void writeqldir (QXL * qxl, QLDIR * cur, QLDIR * buf)
 
     dlen = cur->length;
     p = (u_char *) buf;
-    ifree = qxl->h.free;
+    ifree = qxl->h.freeGroups;
 
     for (clu = cur->map; dlen;)
     {
-        lseek (qxl->fd, clu * qxl->h.sectc, SEEK_SET);
-        if (dlen < qxl->h.sectc)
+        lseek (qxl->fd, clu * qxl->h.sectorsPerGroup, SEEK_SET);
+        if (dlen < qxl->h.sectorsPerGroup)
             rlen = dlen;
         else
-            rlen = qxl->h.sectc;
+            rlen = qxl->h.sectorsPerGroup;
         write (qxl->fd, p, rlen);
         p += rlen;
         dlen -= rlen;
         if (dlen)
             clu = nextcluster (qxl, clu, 1);
     }
-    if (ifree != qxl->h.free)
+    if (ifree != qxl->h.freeGroups)
         writeheader (qxl);
 }
 
@@ -652,7 +652,7 @@ static void cpfile (QXL * qxl, QLDIR * d)
     u_short cluster;
     short off = sizeof (QLDIR);
 
-    buf = (u_char *) alloca (qxl->h.sectc);
+    buf = (u_char *) alloca (qxl->h.sectorsPerGroup);
     dlen = d->length;
     cluster = d->map;
 
@@ -660,11 +660,11 @@ static void cpfile (QXL * qxl, QLDIR * d)
     {
         for (cluster = d->map; cluster; cluster = nextcluster (qxl, cluster, 0))
         {
-            lseek (qxl->fd, cluster * qxl->h.sectc, SEEK_SET);
-            if (dlen < qxl->h.sectc)
+            lseek (qxl->fd, cluster * qxl->h.sectorsPerGroup, SEEK_SET);
+            if (dlen < qxl->h.sectorsPerGroup)
                 rlen = dlen;
             else
-                rlen = qxl->h.sectc;
+                rlen = qxl->h.sectorsPerGroup;
             read (qxl->fd, buf, rlen);
 
             fwrite (buf + off, 1, rlen - off, qxl->fp);
@@ -734,11 +734,11 @@ static void updatefree (QXL * qxl, QLDIR * d)
     for (c = d->map; c;)
     {
         cn = nextcluster (qxl, c, 0);
-        f = qxl->h.first;
-        qxl->h.first = c;
+        f = qxl->h.firstFreeGroup;
+        qxl->h.firstFreeGroup = c;
         updatecluster (qxl, c, f);
         c = cn;
-        qxl->h.free++;
+        qxl->h.freeGroups++;
     }
     writeheader (qxl);
 }
@@ -929,7 +929,7 @@ static double unify (QXL * qxl, u_short x, char *f)
 {
     double ts;
 
-    ts = x * qxl->h.sectc;
+    ts = x * qxl->h.sectorsPerGroup;
     if (ts > 1024 * 1024)
     {
         ts /= 1024 * 1024;
@@ -954,25 +954,25 @@ static int qinfo (QXL * qxl, short mflag, char **p)
 
     fstat (qxl->fd, &st);
 
-    ts = unify (qxl, qxl->h.total, &tsb);
-    fs = unify (qxl, qxl->h.free, &fsb);
+    ts = unify (qxl, qxl->h.numberOfGroups, &tsb);
+    fs = unify (qxl, qxl->h.freeGroups, &fsb);
 
     fprintf (qxl->fp, "Info for QXL file %s %s\n",
              qxl->fn, (qxl->mode == (O_RDONLY | O_BINARY)) ? "(RO)" : "");
 
-    fprintf (qxl->fp, "Label %-.*s", qxl->h.namlen, qxl->h.name);
-    if (strlen ((char *) qxl->h.name) != qxl->h.namlen)
+    fprintf (qxl->fp, "Label %-.*s", qxl->h.nameSize, qxl->h.name);
+    if (strlen ((char *) qxl->h.name) != qxl->h.nameSize)
     {
         fprintf (qxl->fp, " [%s]", qxl->h.name);
     }
 
-    fprintf (qxl->fp, "\nSector size %d bytes\n", qxl->h.sectc);
-    fprintf (qxl->fp, "Total sectors %d (%.2f %cb, on disk %d b)\n",
-             qxl->h.total, ts, tsb, (int) st.st_size);
+    fprintf (qxl->fp, "\nSector size %d bytes\n", qxl->h.sectorsPerGroup);
+    fprintf (qxl->fp, "numberOfGroups sectors %d (%.2f %cb, on disk %d b)\n",
+             qxl->h.numberOfGroups, ts, tsb, (int) st.st_size);
     fprintf (qxl->fp, "Free  sectors %d (%.2f %cb)\n",
-             qxl->h.free, fs, fsb);
-    fprintf (qxl->fp, "Formatted %d, (map len %d*512), rand %d, access %d\n",
-             qxl->h.formatted, qxl->h.formatted, qxl->h.rand, qxl->h.access);
+             qxl->h.freeGroups, fs, fsb);
+    fprintf (qxl->fp, "secors per map %d, (map len %d*512), rand %d, access %d\n",
+             qxl->h.sectorsPerMap, qxl->h.sectorsPerMap, qxl->h.rand, qxl->h.access);
     return 0;
 }
 
@@ -1005,9 +1005,9 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
         ld->length += sizeof (QLDIR);
     }
 
-    buf = (u_char *) alloca (qxl->h.sectc);
+    buf = (u_char *) alloca (qxl->h.sectorsPerGroup);
 
-    memset (buf, 0, qxl->h.sectc);
+    memset (buf, 0, qxl->h.sectorsPerGroup);
     memset (f, 0, sizeof (QLDIR));
 
     nt = 0;
@@ -1036,7 +1036,7 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
 #endif
         for (nr = -1, off = sizeof (QLDIR), c = 0; nr != 0;)
         {
-            ilen = qxl->h.sectc - off;
+            ilen = qxl->h.sectorsPerGroup - off;
             if ((nr = fread (buf + off, 1, ilen, fp)) > 0)
             {
                 c = getcluster (qxl, c);
@@ -1044,7 +1044,7 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
                 {
                     f->map = c;
                 }
-                lseek (qxl->fd, c * qxl->h.sectc, SEEK_SET);
+                lseek (qxl->fd, c * qxl->h.sectorsPerGroup, SEEK_SET);
                 write (qxl->fd, buf, nr + off);
                 off = 0;
                 nt += nr;
@@ -1059,8 +1059,8 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
     {
         f->date = 0;
         f->map = c = getcluster (qxl, 0);
-        lseek (qxl->fd, c * qxl->h.sectc, SEEK_SET);
-        write (qxl->fd, buf, qxl->h.sectc);
+        lseek (qxl->fd, c * qxl->h.sectorsPerGroup, SEEK_SET);
+        write (qxl->fd, buf, qxl->h.sectorsPerGroup);
         f->type = 0xff;
     }
 
@@ -1124,7 +1124,7 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
         else
         {
             qxl->root.length += sizeof (QLDIR);
-            qxl->h.dlen = qxl->root.length;
+            qxl->h.rootDirectorySize = qxl->root.length;
         }
     }
     writeheader (qxl);
@@ -1299,14 +1299,14 @@ static int qwrite (QXL * qxl, short mflag, char **av)
 
                     fstat (fileno (fp), &st);
                     need = ((sizeof (QLDIR) + (long)st.st_size) - dlen) /
-                           qxl->h.sectc;
+                           qxl->h.sectorsPerGroup;
 
-                    if (need > (qxl->h.free - 1))
+                    if (need > (qxl->h.freeGroups - 1))
                     {
                         fprintf (stderr,
                                  "%s %d No room (%d free sectors, %ld b wanted %d)\n",
-                                 fn0, qxl->h.sectc,
-                                 qxl->h.free,
+                                 fn0, qxl->h.sectorsPerGroup,
+                                 qxl->h.freeGroups,
                                  (long) st.st_size + sizeof (QLDIR),
                                  need
                                 );
@@ -1410,10 +1410,10 @@ static void concatargs (char **av, char *cmd)
     *c = 0;
 }
 
-static void init (QXL * qxl, char *lab, u_short bs, u_short ts)
+static void init (QXL * qxl, char *lab, u_short bs, unsigned ts)
 {
     char *l;
-    short ns;
+    u_short ns;                     /* Number of groups */
     u_short i, j, k, m;
     size_t n;
 
@@ -1424,19 +1424,34 @@ static void init (QXL * qxl, char *lab, u_short bs, u_short ts)
         memset (&qxl->h, 0, sizeof (HEADER));
         memset (qxl->h.name, ' ', 20);
 
-        qxl->h.total = ts;
-        qxl->h.sectc = bs;
+        /* Number of groups = numberOfGroupsSectors / SectorsPerGroup */
+        qxl->h.numberOfGroups = ts/bs;
+
+        /* SectorsPerBlock */
+        qxl->h.sectorsPerGroup  = bs;
         qxl->h.numberOfMaps = 1;
+
+        /* Disc name */
         n = strlen (lab);
         if (n > 20)
             n = 20;
 
         memcpy (qxl->h.name, lab, n);
-        qxl->h.namlen = n;
+        qxl->h.nameSize = n;
+
+        /* Update counter */
         qxl->h.access = 0;
+
+        /* Header Flag */
         memcpy (qxl->h.id, "QLWA", 4);
-        ns = (qxl->h.total * 2 + bs - 1) / bs + 1;
-        lseek (qxl->fd, sizeof (QLDIR), SEEK_SET);
+
+        /* Get numberOfGroups */
+        ns = qxl->h.numberOfGroups;
+
+        /* Position after the header area = start of map */
+        lseek (qxl->fd, sizeof (HEADER), SEEK_SET);
+
+        /* Write the map data, the final map word is always zero. */
         for(i=1; i<=ns-1; i++)
         {
             j=swapword(i);
@@ -1447,16 +1462,16 @@ static void init (QXL * qxl, char *lab, u_short bs, u_short ts)
         write(qxl->fd,&j,2);
         i++; /* EOF MAP */
 
-        qxl->h.formatted = (qxl->h.total*2+511+0x40)/512;
+        qxl->h.sectorsPerMap = (qxl->h.numberOfGroups*2+511+0x40)/512;
         /* this appears to be the length of map in sectors..*/
 
-        qxl->h.direct = i-1;
+        qxl->h.rootDirectoryId = i-1;
         write(qxl->fd,&j,2);
         i++; /* EOF DIR */
 
-        qxl->h.first = i-1;
+        qxl->h.firstFreeGroup = i-1;
 
-        for (i = qxl->h.first; i < qxl->h.total - 1;)
+        for (i = qxl->h.firstFreeGroup; i < qxl->h.numberOfGroups - 1;)
         {
             i++;
             j = swapword (i);
@@ -1466,22 +1481,22 @@ static void init (QXL * qxl, char *lab, u_short bs, u_short ts)
         j = 0;
         write (qxl->fd, &j, sizeof (short));
 
-        qxl->h.free = qxl->h.total - ns - 1;
-        qxl->h.dlen = sizeof (QLDIR);
+        qxl->h.freeGroups = qxl->h.numberOfGroups - ns - 1;
+        qxl->h.rootDirectorySize = 64;
         srand (time (NULL));
         qxl->h.rand = rand ();
 
         writeheader (qxl);
 
-        lseek (qxl->fd, bs * qxl->h.direct, SEEK_SET);
+        lseek (qxl->fd, bs * qxl->h.rootDirectoryId, SEEK_SET);
         l = alloca (bs);
         memset (l, 0, bs);
         fputs ("Formatting ....", stdout);
 
-        k = j = qxl->h.total / 20;
+        k = j = qxl->h.numberOfGroups / 20;
         m = 5;
 
-        for (i = qxl->h.direct; i < qxl->h.total; i++)
+        for (i = qxl->h.rootDirectoryId; i < qxl->h.numberOfGroups; i++)
         {
             if (write (qxl->fd, l, bs) != bs)
             {
@@ -1501,8 +1516,8 @@ static void init (QXL * qxl, char *lab, u_short bs, u_short ts)
         fputs(" you must fix the geometry before SMSQ can use this filesystem\n",stdout);
 #endif
 #if 0
-        qxl->root.length = qxl->h.dlen;
-        qxl->root.map = qxl->h.direct;
+        qxl->root.length = qxl->h.rootDirectorySize;
+        qxl->root.map = qxl->h.rootDirectoryId;
         qxl->root.type = 0xff;
         *qxl->root.name = 0;
         qxl->root.nlen = 0;
@@ -1521,8 +1536,8 @@ static void init (QXL * qxl, char *lab, u_short bs, u_short ts)
 static int qinit (QXL * qxl, short mflag, char **av)
 {
     char lab[80];
-    u_short bs = qxl->h.sectc;
-    u_short ts = qxl->h.total;
+    u_short bs = qxl->h.sectorsPerGroup;
+    u_short ts = qxl->h.numberOfGroups;
     concatargs (av, lab);
     init (qxl, lab, bs, ts);
     qcd(qxl, 0, 0);
@@ -1704,32 +1719,37 @@ static int qformat (QXL * qxl, short mflag, char **av)
         if (q &&
                 (q->fd = open (fn, fmode, 0666)) != -1)
         {
-            static short mbs[] =
-            {32, 64, 128, 256, 0};
-            u_short ss, bs, ts;
-            short i;
+            unsigned ts;
+            u_short bs;
+            u_short ss;
 
+            /* get the size in MB - Error trapping? None? */
             ss = strtoul (size, NULL, 10);
 
+            /* Looks like we are testing if there's room for the file. */
+            /* ss << 20 = size in bytes. */
             lseek(q->fd, (ss << 20), SEEK_SET);
             lseek(q->fd, 0, SEEK_SET);
 #ifdef HAVE_FTRUNCATE
             ftruncate(q->fd, (ss << 20));
 #endif
+            /* Size is between 1 and 256 MB. Why the upper limit? */
             if (ss < 1)
                 ss = 1;
+
             if (ss > 256)
                 ss = 256;
-            for (i = 0; mbs[i]; i++)
-            {
-                if (ss <= mbs[i])
-                    break;
-            }
 
-            bs = (1 << i);
-            ts = (ss << 20) / (bs<<9);
-            bs <<= 9;
+            /* bs = sectorsPerGroup and is 4 minimum*/
+            bs = ceil((double)ss / 32.0);
+            bs = (bs < 4) ? 4 : bs;
+
+            /* ts = numberOfGroupsSectors = MB << 11 */
+            ts = ss << 11;
+
             q->mode = fmode;
+
+            /* bs = sectorsPerBlock, ts = numberOfGroupsSectors */
             init (q, label, bs, ts);
             close (q->fd);
         }

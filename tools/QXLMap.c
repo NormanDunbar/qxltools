@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
     // Error? or zero are the same. Bale out.
     if (!megaBytes) {
-        printf("\nCannot convert megabytes ('%s') to a non-zero number.\n");
+        printf("\nCannot convert megabytes ('%s') to a non-zero number.\n", argv[1]);
         return 2;
     }
 
