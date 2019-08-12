@@ -27,7 +27,8 @@ If qxltool corrupts your precious data, then more fool you for using it;
 still, you can blame the information hoarders.
 
 The file qxlwin.html on which this program is based contains
-significant errors! You have been warned.
+significant errors! You have been warned. 
+(Ahem, not any more - Norman Dunbar (c) 2019.)
 
 I would also caution STRONGLY against running QXL and qxltool at the same
 time. Actually, I'd recommend that you don't run QXL at all; install
@@ -48,22 +49,22 @@ Unix
 To install the supplied binary on Linux (or other Unix)
 
    1) cd Unix
-   2) ./configure
-   3) make
-   4) strip qxltool
-   5) # copy qxltool to a suitable location
+   2) make
+   3) strip qxltool
+   4) copy qxltool to a suitable location
 
 DOS & OS2
 ---------
 
-Find a compiler, write a Makefile and build
+Find a compiler, write a Makefile and build.
+
 
 Win32 (Win95, Win98, NT)
 ------------------------
 
 Copy the file nt\qxltool.exe onto your path.
 
-or
+or (The following are Unix commands! ND 2019)
 
    1) cd NT
    2) ./configure
@@ -164,8 +165,12 @@ qxltool presents you with a prompt '> ', and accepts the following
 commands.
 
 	info	-	Shows some info about the QXL.WIN file
+	header	-	Shows all info about the QXL.WIN file
 	ls	-	Lists the current QXL.WIN directory
+	dir	-	Lists the current QXL.WIN directory
 	lslr	-	Lists the current QXL.WIN directory and all 
+                        sub-directories.
+	dirw	-	Lists the current QXL.WIN directory and all 
                         sub-directories.
 	cat	-	types or copies a file from QXL.WIN
 	cp	-	types or copies a file from QXL.WIN
@@ -185,13 +190,13 @@ commands.
 			your confidence in the QPC or QXL software
 			that wrote the original QXL.WIN, particularly
 			given the state of the documentation.
-        init	-	Initialises exisiting QXL.WIN
-        mkdir	-	Creates a directory. There must be no name
-			clash with an existing file.
-        open	-	Opens a new QXL.WIN file
-        close	-	Closes current QXL.WIN file
-        format	-	Create a new QXL.WIN file
-        shell	-	Spawns a shell
+    init	-	Initialises exisiting QXL.WIN
+    mkdir	-	Creates a directory. There must be no name
+        clash with an existing file.
+    open	-	Opens a new QXL.WIN file
+    close	-	Closes current QXL.WIN file
+    format	-	Create a new QXL.WIN file
+    shell	-	Spawns a shell
 	clone	-	copies all or part of a QXL.WIN file to
 			another QXL.WIN file.
         RW      -	Sets read-write mode for filesystem (O_RDWR)

@@ -1,8 +1,12 @@
 /*--------------------------------------------------------------.
 | qxltool.c : Access QXL.WIN files from other operating systems |
 |                                                               |
-| (c) Jonathan Hudson, 1998 - 1999                     		|
+| (c) Jonathan Hudson, 1998 - 1999                              |
 | No Warranty                                                   |
+|                                                               |
+| Bits added, corrections made, variables renamed "better"      |
+| (c) Norman Dunbar, 2019                                       |
+| Warranty? What warranty? :o)                                  |
 `--------------------------------------------------------------*/
 #define _GNU_SOURCE
 
@@ -21,6 +25,7 @@
 #include <sys/stat.h>
 #include <stddef.h>
 #include <sys/types.h>
+#include <math.h>
 
 #if defined(__unix__)
 # include <fnmatch.h>
@@ -56,6 +61,9 @@ static u_short nextcluster (QXL *, u_short, short);
 static void updatecluster (QXL *, u_short, u_short);
 
 #ifndef HAVE_STPCPY
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 char *stpcpy (char *s1, char *s2)
 {
     strcpy (s1, s2);
@@ -65,11 +73,19 @@ char *stpcpy (char *s1, char *s2)
 
 
 #ifndef WORDS_BIGENDIAN
+/*--------------------------------------------------------------------
+ * If we are on a little endian system, swap the bytes order in a word
+ * around to big endian to suit the QL's big endian format.
+ *--------------------------------------------------------------------*/
 u_short inline swapword (u_short val)
 {
     return (u_short) (val << 8) + (val >> 8);
 }
 
+/*--------------------------------------------------------------------
+ * If we are on a little endian system, swap the bytes order in a long
+ * around to big endian to suit the QL's big endian format.
+ *--------------------------------------------------------------------*/
 u_long inline swaplong (u_long val)
 {
     return (u_long) (((u_long) swapword (val & 0xFFFF) << 16) |
@@ -79,11 +95,19 @@ u_long inline swaplong (u_long val)
 # define SW(a,c) (a)->c = swapword((a)->c)
 # define SL(a,c) (a)->c = swaplong((a)->c)
 #else
+/*--------------------------------------------------------------------
+ * If we are on a big endian system, do nothing when asked to swap
+ * byte order on a word value.
+ *--------------------------------------------------------------------*/
 u_short swapword (u_short val)
 {
     return val;
 }
 
+/*--------------------------------------------------------------------
+ * If we are on a big endian system, do nothing when asked to swap
+ * byte order on a long value.
+ *--------------------------------------------------------------------*/
 u_short swaplong (u_long val)
 {
     return val;
@@ -102,12 +126,27 @@ char *_endmsg = NULL;
 #include <fcntl.h>
 #include <qdos.h>
 #include <qptr.h>
+/*--------------------------------------------------------------------
+ * QL specific console setup function header.
+ *--------------------------------------------------------------------*/
 void myconsetup (chanid_t ch, WINDOWDEF_t * w);
 
+/*--------------------------------------------------------------------
+ * QL specific console definition.
+ *--------------------------------------------------------------------*/
 struct WINDOWDEF _condetails =
 {6, 1, 0, 4, 512, 256, 0, 0};
+
+/*--------------------------------------------------------------------
+ * QL specific console setup function gets hooked into startup code
+ * right here.
+ *--------------------------------------------------------------------*/
 void (*_consetup) () = myconsetup;
 
+/*--------------------------------------------------------------------
+ * This is where the QL specific console setup function does its work.
+ * It appears to read the environment variable QXL_CON, if it exists.
+ *--------------------------------------------------------------------*/
 void myconsetup (chanid_t ch, WINDOWDEF_t * w)
 {
     char *p;
@@ -133,6 +172,10 @@ void myconsetup (chanid_t ch, WINDOWDEF_t * w)
     consetup_qpac (ch, w);
 }
 
+/*--------------------------------------------------------------------
+ * Scan a QL path name to extract the last part which makes up a QL
+ * directory name.
+ *--------------------------------------------------------------------*/
 static char *lastdir (char *ws)
 {
     char *p;
@@ -160,12 +203,16 @@ static char *lastdir (char *ws)
 
 #endif
 
+
+/*--------------------------------------------------------------------
+ * Trim trailing control characters from a string
+ *--------------------------------------------------------------------*/
 static u_char *strim (u_char *s)
 {
     u_char *p;
     short n;
 
-    n = strlen (s);
+    n = strlen ((char *)s);
     p = s + n;
     while (*--p <= ' ' && n--)
     {
@@ -174,11 +221,16 @@ static u_char *strim (u_char *s)
     return s;
 }
 
+
+/*--------------------------------------------------------------------
+ * Given a QLWA header, convert words and longs to the host computers 
+ * byte order, if necessary. Does nothing at all on big endian systems.
+ *--------------------------------------------------------------------*/
 static void h_normalise (HEADER * h)
 {
     SW (h, nameSize);
-    SW (h, rand);
-    SW (h, access);
+    SW (h, formatRandom);
+    SW (h, accessCount);
     SW (h, sectorsPerGroup);
     SW (h, numberOfGroups);
     SW (h, freeGroups);
@@ -189,15 +241,19 @@ static void h_normalise (HEADER * h)
     SW (h, map[0]);
 }
 
+/*--------------------------------------------------------------------
+ * Writes a new QLWA header to the open QXL file. This will overwrite
+ * any existing header.
+ *--------------------------------------------------------------------*/
 static void writeheader (QXL * qxl)
 {
     HEADER h;
     int i;
 
+    /* Reset file position to the very start */
     lseek (qxl->fd, 0, SEEK_SET);
-    qxl->h.access++;
+    qxl->h.accessCount++;
     h = qxl->h;
-    h.sectorsPerGroup >>= 9;
     for(i = 0; i < sizeof(h.name); i++)
     {
         if(h.name[i] == 0) h.name[i] = ' ';
@@ -207,11 +263,21 @@ static void writeheader (QXL * qxl)
     strim ((char *) h.name);
 }
 
+/*--------------------------------------------------------------------
+ * Reads the QLWA header from an opened QXL file.
+ *--------------------------------------------------------------------*/
 static void readheader (QXL * qxl)
 {
+    /* Reset file position to the very start */
     lseek (qxl->fd, 0, SEEK_SET);
+
+    /* Read current header */
     read (qxl->fd, &qxl->h, sizeof (HEADER));
+
+    /* Swap byte order in words and longs in header */
     h_normalise (&qxl->h);
+
+    /* Is it a QLWA header? */
     if (memcmp (qxl->h.id, "QLWA", 4) == 0)
     {
         /* Now create a fake directory record for the root directory */
@@ -220,16 +286,20 @@ static void readheader (QXL * qxl)
         qxl->root.type = 0xff;
         *qxl->root.name = 0;
         qxl->root.nlen = 0;
-        qxl->h.sectorsPerGroup <<= 9;
         strim ((char *) qxl->h.name);
     }
     else
+    /* Nope, not QLWA */
     {
         fputs ("Not a QXL file\n", stderr);
         exit (0);
     }
 }
 
+/*--------------------------------------------------------------------
+ * Swaps the byte order in a directory entry on little endian systems
+ * but does nothing on big endian systems.
+ *--------------------------------------------------------------------*/
 static void d_normalise (QLDIR * d)
 {
     SL (d, length);
@@ -240,6 +310,9 @@ static void d_normalise (QLDIR * d)
     SW (d, map);
 }
 
+/*--------------------------------------------------------------------
+ * Lists a directory contents.
+ *--------------------------------------------------------------------*/
 static int d_list (QXL * qxl, QLDIR * d, void *a, void *pb, u_short c)
 {
     struct tm *tm;
@@ -248,6 +321,7 @@ static int d_list (QXL * qxl, QLDIR * d, void *a, void *pb, u_short c)
     char *p;
     int flen, m;
 
+    /* Strip off the unused copy of the directory entry */
     flen = d->length - sizeof (QLDIR);
 
     if(flen >=0)
@@ -291,7 +365,7 @@ static int d_list (QXL * qxl, QLDIR * d, void *a, void *pb, u_short c)
 
         if (d->type == 1)
         {
-            sprintf (s + n, "(%ld) ", d->data);
+            sprintf (s + n, "(%ld) ", (long)d->data);
         }
         fputs (s, qxl->fp);
         fputc ('\n', qxl->fp);
@@ -305,6 +379,9 @@ static int d_list (QXL * qxl, QLDIR * d, void *a, void *pb, u_short c)
 # define FNM_CASEFOLD 0
 #endif
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static int qfindwild (QXL * qxl, QLDIR * d, void *fn, void *pft, u_short flag)
 {
     QLDIR *pd = NULL;
@@ -326,6 +403,9 @@ static int qfindwild (QXL * qxl, QLDIR * d, void *fn, void *pft, u_short flag)
     return (int) pd;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static int qfindbest (QXL * qxl, QLDIR * d, void *fn, void *pft, u_short flag)
 {
     size_t wlen = strlen (fn);
@@ -343,6 +423,9 @@ static int qfindbest (QXL * qxl, QLDIR * d, void *fn, void *pft, u_short flag)
     return 0;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static int qmatch (QXL * qxl, QLDIR * d, void *fn, void *pft, u_short flag)
 {
     QLDIR *pd = NULL;
@@ -361,6 +444,9 @@ static int qmatch (QXL * qxl, QLDIR * d, void *fn, void *pft, u_short flag)
     return (int) pd;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static int processdir (QXL * qxl, QLDIR * buf, QLDIR * cur,
                        PCALLBACK func, char *fn, void *pft, short flag)
 {
@@ -391,43 +477,78 @@ static int processdir (QXL * qxl, QLDIR * buf, QLDIR * cur,
     return res;
 }
 
+/*--------------------------------------------------------------------
+ * Allocate a new cluster (or group). Returns the cluster number. If
+ * 'o' is non-zero then ??????????????????????? otherwise ???????????.
+ *
+ * QUERY: We always reduce the number of free clusters even when we
+ * don't allocate one.
+ *--------------------------------------------------------------------*/
 static u_short getcluster (QXL * qxl, u_short o)
 {
     u_short c, n;
+
+    /* Decrease the number of free clusters left */
     qxl->h.freeGroups--;
+
+    /* Grab the first free cluster number */
     c = nextcluster (qxl, qxl->h.firstFreeGroup, 0);
     n = qxl->h.firstFreeGroup;
     if (o)
         updatecluster (qxl, o, n);
+
     updatecluster (qxl, n, 0);
     qxl->h.firstFreeGroup = c;
     return n;
 }
 
+/*--------------------------------------------------------------------
+ * Return a cluster number which is the next cluster to be added to the
+ * end of the cluster passed in as parameter 'c'.
+ * 'Flag' is non-zero when we need to actually allocate a new cluster 
+ * and zero when we just want the number.
+ *--------------------------------------------------------------------*/
 static u_short nextcluster (QXL * qxl, u_short c, short flag)
 {
     u_long newoff;
     u_short d;
 
+    /* Offset into the map, 2 bytes per cluster */
     newoff = c * 2 + offsetof (HEADER, map);
+
+    /* Seek to the map word we want. */
     lseek (qxl->fd, newoff, SEEK_SET);
+
+    /* Read the map word in big endian format 
+     * Swap the byte order if necessary */
     read (qxl->fd, &d, sizeof (short));
     d = swapword (d);
+
+    /* If this is the last cluster (for current file) and we are allocating 
+     * call getcluster to allocate the cluster if there are free clusters 
+     * remaining. */
     if (d == 0 && flag)
     {
         if (qxl->h.freeGroups)
         {
+            /* Actually allocate the cluster & update the map */
             d = getcluster (qxl, c);
         }
         else
         {
+            /* We are stuffed! */
             fputs ("Disk is full!\n", stderr);
             exit (0);
         }
     }
+
+    /* Return the newly allocated or calculated cluster number */
     return d;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static QLDIR *readqldir (QXL * qxl, QLDIR * cur)
 {
     u_char *buf, *p;
@@ -452,6 +573,9 @@ static QLDIR *readqldir (QXL * qxl, QLDIR * cur)
     return (QLDIR *) buf;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static void writeqldir (QXL * qxl, QLDIR * cur, QLDIR * buf)
 {
     u_char *p;
@@ -480,6 +604,11 @@ static void writeqldir (QXL * qxl, QLDIR * cur, QLDIR * buf)
         writeheader (qxl);
 }
 
+/*--------------------------------------------------------------------
+ * Opens a QXL file for processing. The default is read-only unless
+ * -w was on the command line, or the RW command has been used. The
+ * QLWA header is read on a successful open.
+ *--------------------------------------------------------------------*/
 static int openqxl (QXL * qxl, char *fn)
 {
     if ((qxl->fd = open (fn, qxl->mode)) != -1)
@@ -491,6 +620,9 @@ static int openqxl (QXL * qxl, char *fn)
     return qxl->fd;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static QLDIR *find_file (QXL * qxl, char *fn, u_short ft, QLDIR * cur,
                          short flag)
 {
@@ -517,12 +649,20 @@ static QLDIR *find_file (QXL * qxl, char *fn, u_short ft, QLDIR * cur,
 }
 
 
+/*--------------------------------------------------------------------
+ * QUIT/EXIT commands.
+ * We are done, leave the program.
+ *--------------------------------------------------------------------*/
 static int quit (QXL * qxl, short mflag, char **av)
 {
     exit (0);
     return 0;
 }
 
+/*--------------------------------------------------------------------
+ * CD command.
+ * Change QXL Directory.
+ *--------------------------------------------------------------------*/
 static int qcd (QXL * qxl, short mflag, char **av)
 {
     QLDIR *d;
@@ -566,6 +706,11 @@ static int qcd (QXL * qxl, short mflag, char **av)
     return rv;
 }
 
+/*--------------------------------------------------------------------
+ * LSLR command.
+ * List the contents of the current QXL directory plus any 
+ * sub-directories.
+ *--------------------------------------------------------------------*/
 static int qlslr (QXL * qxl, short mflag, char **av)
 {
     QLDIR *buf;
@@ -586,6 +731,10 @@ static int qlslr (QXL * qxl, short mflag, char **av)
     return 0;
 }
 
+/*--------------------------------------------------------------------
+ * LS command.
+ * List the contents of the current QXL directory.
+ *--------------------------------------------------------------------*/
 static int qls (QXL * qxl, short mflag, char **av)
 {
     QLDIR *buf;
@@ -606,6 +755,10 @@ static int qls (QXL * qxl, short mflag, char **av)
     return 0;
 }
 
+/*--------------------------------------------------------------------
+ * DUMP command.
+ * Displays a QXL directory structure plus any warts found.
+ *--------------------------------------------------------------------*/
 static int qdump (QXL * qxl, short mflag, char **av)
 {
     QLDIR *buf;
@@ -614,7 +767,7 @@ static int qdump (QXL * qxl, short mflag, char **av)
 
     if (cmd && *cmd)
     {
-        fputs ("ls[lr] takes no parameters (currently), cd first\n", stderr);
+        fputs ("dump takes no parameters (currently), cd first\n", stderr);
     }
     else
     {
@@ -627,6 +780,10 @@ static int qdump (QXL * qxl, short mflag, char **av)
 }
 
 
+/*--------------------------------------------------------------------
+ * PWD command
+ * Prints the current directory in the QXL file.
+ *--------------------------------------------------------------------*/
 static int qpwd (QXL * qxl, short mflag, char **av)
 {
     char name[QLPATH_MAX+1];
@@ -645,6 +802,9 @@ static int qpwd (QXL * qxl, short mflag, char **av)
 }
 
 
+/*--------------------------------------------------------------------
+ * Type or copy a QXL file to the host OS.
+ *--------------------------------------------------------------------*/
 static void cpfile (QXL * qxl, QLDIR * d)
 {
     u_char *buf;
@@ -674,6 +834,7 @@ static void cpfile (QXL * qxl, QLDIR * d)
         }
     }
 
+    /* Process QXL executable files with an XTCC trailer record on DOS/Unix etc. */
     if (d->type == 1 && qxl->close == 1 && d->data)
     {
 #ifndef __QDOS__
@@ -688,6 +849,7 @@ static void cpfile (QXL * qxl, QLDIR * d)
             fwrite (&xtcc, 1, 8, qxl->fp);
         }
 #else
+        /* Write out the file to QDOS and set the header natively. */
         {
             struct qdirect qd;
             qd.d_datalen = d->data;
@@ -701,6 +863,10 @@ static void cpfile (QXL * qxl, QLDIR * d)
 }
 
 
+/*--------------------------------------------------------------------
+ * CAT, CP, TCAT, TCP commands.
+ * Copy or type a QXL file. Converts LF to CR/LF.
+ *--------------------------------------------------------------------*/
 static int qcp (QXL * qxl, short mflag, char **av)
 {
     QLDIR *d;
@@ -720,6 +886,13 @@ static int qcp (QXL * qxl, short mflag, char **av)
     return p == NULL;
 }
 
+/*--------------------------------------------------------------------
+ * Update a cluster in the map. 
+ *
+ * QUERY: Use of QLDIR? Really? WTF? SEEK_SET is from start of file
+ * so surely this should be:
+ *      f * 2 + offsetof(HEADER, map) ????
+ *--------------------------------------------------------------------*/
 static void updatecluster (QXL * qxl, u_short f, u_short c)
 {
     lseek (qxl->fd, f * 2 + sizeof (QLDIR), SEEK_SET);
@@ -727,6 +900,9 @@ static void updatecluster (QXL * qxl, u_short f, u_short c)
     write (qxl->fd, &c, sizeof (short));
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static void updatefree (QXL * qxl, QLDIR * d)
 {
     u_short c, cn, f;
@@ -743,6 +919,9 @@ static void updatefree (QXL * qxl, QLDIR * d)
     writeheader (qxl);
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static void updatedir (QXL * qxl, QLDIR * d)
 {
     QLDIR *e, *f;
@@ -760,6 +939,9 @@ static void updatedir (QXL * qxl, QLDIR * d)
     free (e);
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static void rmfile (QXL * qxl, QLDIR * d)
 {
     char fn[40];
@@ -769,6 +951,10 @@ static void rmfile (QXL * qxl, QLDIR * d)
     updatedir (qxl, d);
 }
 
+/*--------------------------------------------------------------------
+ * RM command
+ * Delete a file.
+ *--------------------------------------------------------------------*/
 static int qrm (QXL * qxl, short flag, char **av)
 {
     QLDIR *d;
@@ -800,6 +986,9 @@ static int qrm (QXL * qxl, short flag, char **av)
     return p == NULL;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static int dircount (QXL * qxl, QLDIR * d)
 {
     QLDIR *e, *f;
@@ -818,6 +1007,10 @@ static int dircount (QXL * qxl, QLDIR * d)
 }
 
 
+/*--------------------------------------------------------------------
+ * RMDIR Command.
+ * Delete a directory - which must be empty.
+ *--------------------------------------------------------------------*/
 static int qrmdir (QXL * qxl, short mflag, char **av)
 {
     QLDIR *d;
@@ -847,6 +1040,12 @@ static int qrmdir (QXL * qxl, short mflag, char **av)
     return p == NULL;
 }
 
+/*--------------------------------------------------------------------
+ * Called from main() to get args to pass to the appropriate function
+ * which is about to be called to operate on the QXL file. For example
+ * 'mkdir fred' returns 'fred'. The return is an array of char* and
+ * the memory allocated will be reclaimed in closeout() below.
+ *--------------------------------------------------------------------*/
 static char **openout (QXL * qxl, char *s, short flag)
 {
 
@@ -906,9 +1105,13 @@ static char **openout (QXL * qxl, char *s, short flag)
         ;
     pav = (char **) realloc (pav, sizeof (char *) * (n + 1));
     *(pav + n) = NULL;
+
     return pav;
 }
 
+/*--------------------------------------------------------------------
+ * Reclaims the memory allocated by openout() above.
+ *--------------------------------------------------------------------*/
 static void closeout (QXL * qxl, char **pav)
 {
     if (pav)
@@ -925,6 +1128,9 @@ static void closeout (QXL * qxl, char **pav)
     qxl->fp = NULL;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static double unify (QXL * qxl, u_short x, char *f)
 {
     double ts;
@@ -946,36 +1152,87 @@ static double unify (QXL * qxl, u_short x, char *f)
 }
 
 
+/*--------------------------------------------------------------------
+ * INFO Command.
+ * Display QXL file information.
+ *--------------------------------------------------------------------*/
 static int qinfo (QXL * qxl, short mflag, char **p)
 {
-    double ts, fs;
-    char tsb, fsb;
+    double ts, fs;      /* Bytes to Kb or Mb as appropriate. */
+    char tsb, fsb;      /* K or M suffix for total and free size. */
     struct stat st;
 
     fstat (qxl->fd, &st);
 
-    ts = unify (qxl, qxl->h.numberOfGroups, &tsb);
-    fs = unify (qxl, qxl->h.freeGroups, &fsb);
+    ts = unify (qxl, qxl->h.numberOfGroups, &tsb);  /* Total size in Mb or Kb */
+    fs = unify (qxl, qxl->h.freeGroups, &fsb);      /* Free size in Mb or Kb */
 
+    /* Display the file name and whether it is read-only or not. */
     fprintf (qxl->fp, "Info for QXL file %s %s\n",
-             qxl->fn, (qxl->mode == (O_RDONLY | O_BINARY)) ? "(RO)" : "");
+             qxl->fn, (qxl->mode == (O_RDONLY | O_BINARY)) ? "(RO)" : "(RW)");
 
+    /* Display the QXL disc label. */
     fprintf (qxl->fp, "Label %-.*s", qxl->h.nameSize, qxl->h.name);
+
+    /* If there's a mismatch in the name size, display the full name. */
     if (strlen ((char *) qxl->h.name) != qxl->h.nameSize)
     {
         fprintf (qxl->fp, " [%s]", qxl->h.name);
     }
 
-    fprintf (qxl->fp, "\nSector size %d bytes\n", qxl->h.sectorsPerGroup);
-    fprintf (qxl->fp, "numberOfGroups sectors %d (%.2f %cb, on disk %d b)\n",
+    /* Group/cluster size in bytes. */
+    fprintf (qxl->fp, "\nGroup size %d bytes\n", qxl->h.sectorsPerGroup);
+
+    /* Total number of groups on QXL file, plus file size in KB or MB. */
+    fprintf (qxl->fp, "Total number of groups %d (%.2f %cb, on disk %d b)\n",
              qxl->h.numberOfGroups, ts, tsb, (int) st.st_size);
-    fprintf (qxl->fp, "Free  sectors %d (%.2f %cb)\n",
+
+    /* Of which, how many are free? Plus free size in KB or MB. */
+    fprintf (qxl->fp, "Free  groups %d (%.2f %cb)\n",
              qxl->h.freeGroups, fs, fsb);
-    fprintf (qxl->fp, "secors per map %d, (map len %d*512), rand %d, access %d\n",
-             qxl->h.sectorsPerMap, qxl->h.sectorsPerMap, qxl->h.rand, qxl->h.access);
+
+    /* Size of the map, the format random and access count. */
+    fprintf (qxl->fp, "Groups per map %d, (map len %d*512), formatRandom %d, accessCount %d\n",
+             qxl->h.sectorsPerMap, qxl->h.sectorsPerMap, qxl->h.formatRandom, qxl->h.accessCount);
+
     return 0;
 }
 
+
+/*--------------------------------------------------------------------
+ * HEADER Command.
+ * Display QXL file header. (ND 2019)
+ *--------------------------------------------------------------------*/
+static int qheader (QXL * qxl, short mflag, char **p)
+{
+    fprintf(qxl->fp, "QLWA identifier................................. '%4.4s'\n", qxl->h.id);
+    fprintf(qxl->fp, "Label size...................................... %d\n", qxl->h.nameSize);
+    fprintf(qxl->fp, "Label........................................... '%*.*s'\n", qxl->h.nameSize, qxl->h.nameSize, qxl->h.name);
+    fprintf(qxl->fp, "Spare - expecting 0............................. %d\n", qxl->h.spare);
+    fprintf(qxl->fp, "Format random number............................ %d\n", qxl->h.formatRandom);
+    fprintf(qxl->fp, "Access counter.................................. %d\n", qxl->h.accessCount);
+    fprintf(qxl->fp, "Interleave factor - expecting 0................. %d\n", qxl->h.interleave);
+    fprintf(qxl->fp, "Sectors per group............................... %d\n", qxl->h.sectorsPerGroup);
+    fprintf(qxl->fp, "Sectors per track - expecting 0................. %d\n", qxl->h.sectorsPerTrack);
+    fprintf(qxl->fp, "Tracks per cylinder - expecting 0............... %d\n", qxl->h.tracksPerCylinder);
+    fprintf(qxl->fp, "Cylinders per drive - expecting 0............... %d\n", qxl->h.cylindersPerDrive);
+    fprintf(qxl->fp, "Total number of groups.......................... %d\n", qxl->h.numberOfGroups);
+    fprintf(qxl->fp, "Number of free groups........................... %d\n", qxl->h.freeGroups);
+    fprintf(qxl->fp, "Sectors per map................................. %d\n", qxl->h.sectorsPerMap);
+    fprintf(qxl->fp, "Number of maps - expecting 1.................... %d\n", qxl->h.numberOfMaps);
+    fprintf(qxl->fp, "First free group................................ %d\n", qxl->h.firstFreeGroup);
+    fprintf(qxl->fp, "Root directory number........................... %d\n", qxl->h.rootDirectoryId);
+    fprintf(qxl->fp, "Root directory length........................... %ld\n", (long)qxl->h.rootDirectorySize);
+    fprintf(qxl->fp, "First sector in this partition - expecting 0.... %ld\n", (long)qxl->h.firstSectorPart);
+    fprintf(qxl->fp, "Parking cylinder - expecting 0.................. %d\n", qxl->h.parkingCylinder);
+
+    return 0;
+}
+
+
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t ftim)
 {
 
@@ -1130,6 +1387,10 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
     writeheader (qxl);
 }
 
+/*--------------------------------------------------------------------
+ * MKDIR Command.
+ * Create a new directory.
+ *--------------------------------------------------------------------*/
 static int qmkdir (QXL * qxl, short mflag, char **av)
 {
     char *p = *av;
@@ -1206,6 +1467,10 @@ static int qmkdir (QXL * qxl, short mflag, char **av)
     return p == NULL;
 }
 
+/*--------------------------------------------------------------------
+ * WR Command.
+ * Write a host file into the current directory in the QXL file.
+ *--------------------------------------------------------------------*/
 static int qwrite (QXL * qxl, short mflag, char **av)
 {
     FILE *fp = NULL;
@@ -1348,6 +1613,10 @@ static int qwrite (QXL * qxl, short mflag, char **av)
 }
 
 
+/*--------------------------------------------------------------------
+ * VERSION Command.
+ * Displays details of the qxltool version and target OS.
+ *--------------------------------------------------------------------*/
 static int version (QXL * qxl, short mflag, char **av)
 {
     fputs ("qxltool " VERSTR " for " TARGET "\n", stdout);
@@ -1355,6 +1624,16 @@ static int version (QXL * qxl, short mflag, char **av)
 }
 
 
+/*--------------------------------------------------------------------
+ * Get the default QXL file name. Attempts to read it from:
+ *
+ * The passed parameter;
+ * The environment variable QXL_FILE ;
+ * The default:
+ *      Unix:   /dos/QXL.WIN
+ *      NT:     c:\QXL.WIN
+ *      QDOS:   win2_tmp_qxl.win
+ *--------------------------------------------------------------------*/
 static char *defargs (char *av)
 {
     char *fn;
@@ -1369,6 +1648,10 @@ static char *defargs (char *av)
     return fn;
 }
 
+/*--------------------------------------------------------------------
+ * OPEN Command.
+ * Opens a QXL file.
+ *--------------------------------------------------------------------*/
 static int qxlopen (QXL * qxl, short mflag, char **av)
 {
     char *fn = defargs (*av);
@@ -1381,6 +1664,10 @@ static int qxlopen (QXL * qxl, short mflag, char **av)
         return 1;
 }
 
+/*--------------------------------------------------------------------
+ * CLOSE Command.
+ * Closes a QXL file.
+ *--------------------------------------------------------------------*/
 static int qclose (QXL * qxl, short mflag, char **av)
 {
     if (qxl->fd > 0)
@@ -1393,6 +1680,11 @@ static int qclose (QXL * qxl, short mflag, char **av)
     return 1;
 }
 
+/*--------------------------------------------------------------------
+ * Given an array of strings, this function combines them all into a
+ * single string, with a space between each. The buffer (cmd) better
+ * be big enough or we are into buffer overflow territory!
+ *--------------------------------------------------------------------*/
 static void concatargs (char **av, char *cmd)
 {
     char *c = cmd;
@@ -1401,37 +1693,127 @@ static void concatargs (char **av, char *cmd)
     {
         while (*av)
         {
+            /* Copy current string and return pointer to terminating '\0'. */
             c = stpcpy (c, *av);
             *c++ = ' ';
             av++;
         }
+
+        /* When done, c is one past the last space, replace it
+         * with a '\0' prior to return. */
         --c;
     }
     *c = 0;
 }
 
-static void init (QXL * qxl, char *lab, u_short bs, unsigned ts)
+/* Format the whole of the requested drive to sectors of binary zeros.
+ * This will include the map, the root directory etc. The map and 
+ * header will be written later.
+ */
+static void doFormat(QXL *qxl, unsigned totalSectors, u_short sectorSize)
 {
-    char *l;
-    u_short ns;                     /* Number of groups */
-    u_short i, j, k, m;
+    unsigned i;
+
+    /* STACK OVERFLOW ALERT! */
+    char *oneBlockForFormatting = alloca(sectorSize);
+
+    memset (oneBlockForFormatting, 0, sectorSize);
+
+/*
+    k = j = qxl->h.numberOfGroups / 20;
+    m = 5;
+*/
+
+    lseek (qxl->fd, 0, SEEK_SET);
+
+    for (i = 0; i < totalSectors; i++)
+    {
+        if (write (qxl->fd, oneBlockForFormatting, sectorSize) != sectorSize)
+        {
+            perror ("Format");
+            exit (0);
+        }
+
+        /*
+        if (i > k)
+        {
+            printf (" %3d%%\b\b\b\b\b", m);
+            fflush (stdout);
+            k += j;
+            m += 5;
+        }
+        */
+    }
+}
+
+
+/*--------------------------------------------------------------------
+ * Initialises a QXL file back to "brand new". Called from qinit() and 
+ * qformat() according to whether this is a new file being formatted
+ * or an existing one being re-formatted to the same size.
+ *--------------------------------------------------------------------*/
+static void init (QXL *qxl, char *lab, unsigned bytes)
+{
+    u_short i, j;
     size_t n;
 
+    u_short megaBytes;
+    u_short totalSectors;
+    u_short sectorsPerGroup;
+    u_short numberOfGroups;
+    u_short sectorsPerMap;
+    u_short groupsPerMap;
+    u_short rootDirectoryId;
+    u_short firstFreeGroup;
+    u_short freeGroups;
+
+    /* Size of a physical sector on disc. */
+    const int sectorSize = 512;
+
+    /* Work header stuff out from size requested. */
+    megaBytes = bytes / 1024 / 1024;
+
+    /* Bytes / sectorSize = total sectors. */
+    totalSectors = bytes / sectorSize;
+
+    /* Sectors per group is megabytes / 32, or 4 minimum. */
+    sectorsPerGroup = ceil((double)megaBytes / 32.0);
+    sectorsPerGroup = sectorsPerGroup < 4 ? 4 : sectorsPerGroup;
+
+    /* How many groups/ */
+    numberOfGroups = totalSectors / sectorsPerGroup;
+
+    /* How many sectors in the map? */
+    sectorsPerMap = ceil(((numberOfGroups * 2) + 64) / 512.0);
+
+    /* How many groups in the map? */
+    groupsPerMap = ceil((double)sectorsPerMap / (double)sectorsPerGroup);
+
+    /* We start counting from zero, so the root directory id is
+     * just the groupsPerMap value. */
+    rootDirectoryId = groupsPerMap;
+
+    /* And the first free group is the one after that. */
+    firstFreeGroup = rootDirectoryId + 1;
+
+    /* And finally, what's left is free. */
+    freeGroups = numberOfGroups - groupsPerMap - 1;
+
+    /* If we can write the file, let's do it! */
     if ((qxl->mode & O_RDWR) == O_RDWR)
     {
-        l = alloca (bs);
+        /* Format the entire disc to the requested size. */
+        fputs ("Formatting ....\n", stdout);
+        doFormat(qxl, totalSectors, sectorSize);
 
+        /* Now build a QXL file header. */
         memset (&qxl->h, 0, sizeof (HEADER));
         memset (qxl->h.name, ' ', 20);
 
-        /* Number of groups = numberOfGroupsSectors / SectorsPerGroup */
-        qxl->h.numberOfGroups = ts/bs;
+        /* Header Flag. */
+        memcpy (qxl->h.id, "QLWA", 4);
 
-        /* SectorsPerBlock */
-        qxl->h.sectorsPerGroup  = bs;
-        qxl->h.numberOfMaps = 1;
-
-        /* Disc name */
+        /* Disc name. */
         n = strlen (lab);
         if (n > 20)
             n = 20;
@@ -1439,82 +1821,96 @@ static void init (QXL * qxl, char *lab, u_short bs, unsigned ts)
         memcpy (qxl->h.name, lab, n);
         qxl->h.nameSize = n;
 
-        /* Update counter */
-        qxl->h.access = 0;
-
-        /* Header Flag */
-        memcpy (qxl->h.id, "QLWA", 4);
-
-        /* Get numberOfGroups */
-        ns = qxl->h.numberOfGroups;
-
-        /* Position after the header area = start of map */
-        lseek (qxl->fd, sizeof (HEADER), SEEK_SET);
-
-        /* Write the map data, the final map word is always zero. */
-        for(i=1; i<=ns-1; i++)
-        {
-            j=swapword(i);
-            write (qxl->fd, &j, sizeof (short));
-        }
-        qxl->h.map[0]=1;  /* writeheader (over)writes this ! */
-        j=0;
-        write(qxl->fd,&j,2);
-        i++; /* EOF MAP */
-
-        qxl->h.sectorsPerMap = (qxl->h.numberOfGroups*2+511+0x40)/512;
-        /* this appears to be the length of map in sectors..*/
-
-        qxl->h.rootDirectoryId = i-1;
-        write(qxl->fd,&j,2);
-        i++; /* EOF DIR */
-
-        qxl->h.firstFreeGroup = i-1;
-
-        for (i = qxl->h.firstFreeGroup; i < qxl->h.numberOfGroups - 1;)
-        {
-            i++;
-            j = swapword (i);
-            write (qxl->fd, &j, sizeof (short));
-        }
-
-        j = 0;
-        write (qxl->fd, &j, sizeof (short));
-
-        qxl->h.freeGroups = qxl->h.numberOfGroups - ns - 1;
-        qxl->h.rootDirectorySize = 64;
+        /* Format random number. */
         srand (time (NULL));
-        qxl->h.rand = rand ();
+        qxl->h.formatRandom = rand ();
 
+        /* Update counter. */
+        qxl->h.accessCount = 0;
+
+        /* Sectors per group. */
+        qxl->h.sectorsPerGroup  = sectorsPerGroup;
+
+        /* Number of groups. */
+        qxl->h.numberOfGroups = numberOfGroups;
+
+        /* Free groups. */
+        qxl->h.freeGroups = freeGroups;
+
+        /* Sectors per map. */
+        qxl->h.sectorsPerMap = sectorsPerMap;
+
+        /* How many maps? Always 1. */
+        qxl->h.numberOfMaps = 1;
+
+        /* First free group number. */
+        qxl->h.firstFreeGroup = firstFreeGroup;
+
+        /* Root directory id. */
+        qxl->h.rootDirectoryId = rootDirectoryId;
+
+        /* Root directory size? Always 64. */
+        qxl->h.rootDirectorySize = 64;
+
+        /* A HEADER struct includes map[0]. That will
+         * always be initialised to 1. */
+        qxl->h.map[0] = 1;
+
+        /* Write the QLWA header, plus map[0]. */
         writeheader (qxl);
 
-        lseek (qxl->fd, bs * qxl->h.rootDirectoryId, SEEK_SET);
-        l = alloca (bs);
-        memset (l, 0, bs);
-        fputs ("Formatting ....", stdout);
+    fprintf(stderr, "QLWA identifier................................. '%4.4s'\n", "QLWA");
+    fprintf(stderr, "Bytes........................................... '%d'\n", bytes);
+    fprintf(stderr, "Megabytes....................................... '%d'\n", megaBytes);
+    fprintf(stderr, "Label size...................................... %d\n", (int)n);
+    fprintf(stderr, "Label........................................... '%*.*s'\n", (int)n, (int)n,  lab);
+    fprintf(stderr, "Spare - expecting 0............................. %d\n", 0);
+    fprintf(stderr, "Format random number............................ %d\n", 1234);
+    fprintf(stderr, "Access counter.................................. %d\n", 1);
+    fprintf(stderr, "Interleave factor - expecting 0................. %d\n", 0);
+    fprintf(stderr, "Sectors per group............................... %d\n", sectorsPerGroup);
+    fprintf(stderr, "Sectors per track - expecting 0................. %d\n", 0);
+    fprintf(stderr, "Tracks per cylinder - expecting 0............... %d\n", 0);
+    fprintf(stderr, "Cylinders per drive - expecting 0............... %d\n", 0);
+    fprintf(stderr, "Total number of groups.......................... %d\n", numberOfGroups);
+    fprintf(stderr, "Number of free groups........................... %d\n", freeGroups);
+    fprintf(stderr, "Sectors per map................................. %d\n", sectorsPerMap);
+    fprintf(stderr, "Number of maps - expecting 1.................... %d\n", 1);
+    fprintf(stderr, "First free group................................ %d\n", firstFreeGroup);
+    fprintf(stderr, "Root directory number........................... %d\n", rootDirectoryId);
+    fprintf(stderr, "Root directory length........................... %d\n", (int)64);
+    fprintf(stderr, "First sector in this partition - expecting 0.... %d\n", (int)0);
+    fprintf(stderr, "Parking cylinder - expecting 0.................. %d\n", 0);
 
-        k = j = qxl->h.numberOfGroups / 20;
-        m = 5;
 
-        for (i = qxl->h.rootDirectoryId; i < qxl->h.numberOfGroups; i++)
-        {
-            if (write (qxl->fd, l, bs) != bs)
-            {
-                perror ("Format");
-                exit (0);
-            }
-            if (i > k)
-            {
-                printf (" %3d%%\b\b\b\b\b", m);
-                fflush (stdout);
-                k += j;
-                m += 5;
-            }
-        }
+        /* Position after the header area => start of map[0]! */
+        lseek (qxl->fd, sizeof (HEADER) - 2, SEEK_SET);
+
+        /* Write the entire map where each entry points at the next one. 
+         * map[0] = 1, map[1] = 2 ... map[numberOfGroups - 1] = 0;
+         */
+        for (i = 0; i < numberOfGroups  - 1; i++) {
+            j = swapword(i + 1);
+            write(qxl->fd, &j, 2);
+        }        
+
+        /* Write the very last map entry as zero. The end. */
+        j = 0;
+        write(qxl->fd, &j, 2);
+
+        /* The final block of the map needs a zero. */
+        lseek(qxl->fd, (groupsPerMap -1) * 2 + 0x40, SEEK_SET);
+        write(qxl->fd, &j, 2);
+
+        /* The root directory entry needs a zero. */
+        write(qxl->fd, &j, 2);
+
         fputs (" Done\n", stdout);
+
 #ifdef mc68000
         fputs(" you must fix the geometry before SMSQ can use this filesystem\n",stdout);
 #endif
+
 #if 0
         qxl->root.length = qxl->h.rootDirectorySize;
         qxl->root.map = qxl->h.rootDirectoryId;
@@ -1526,6 +1922,7 @@ static void init (QXL * qxl, char *lab, u_short bs, unsigned ts)
 #else
         readheader(qxl);
 #endif
+
     }
     else
     {
@@ -1533,18 +1930,31 @@ static void init (QXL * qxl, char *lab, u_short bs, unsigned ts)
     }
 }
 
+
+/*--------------------------------------------------------------------
+ * INIT Command.
+ * Reinitialises an existing QXL file back to "brand new".
+ *--------------------------------------------------------------------*/
 static int qinit (QXL * qxl, short mflag, char **av)
 {
+    /* BUFFER OVERFLOW ALERT!
+     * ND 1029. */
     char lab[80];
     u_short bs = qxl->h.sectorsPerGroup;
     u_short ts = qxl->h.numberOfGroups;
     concatargs (av, lab);
-    init (qxl, lab, bs, ts);
+
+    /* I changed this to simply use the size in MB. ND 2019 */
+    /* init (qxl, lab, bs, ts); */
+    init (qxl, lab, bs * ts * 512);
     qcd(qxl, 0, 0);
     return 0;
 }
 
 #ifdef HAVE_LIBREADLINE
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 char * READLINE(char *a, char *b)
 {
     char *c = NULL;
@@ -1566,6 +1976,9 @@ char * READLINE(char *a, char *b)
     return c;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 void FREECMD(char *a, char *b)
 {
     if(isatty(fileno(stdin)))
@@ -1581,6 +1994,9 @@ void FREECMD(char *a, char *b)
     }
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 char * DUPCMD(char *b)
 {
     char *a;
@@ -1595,6 +2011,9 @@ char * DUPCMD(char *b)
     return a;
 }
 #else
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 char * READLINE(char *a, char *b)
 {
     char *c = NULL;
@@ -1613,6 +2032,10 @@ char * READLINE(char *a, char *b)
     }
     return c;
 }
+
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 void FREECMD(char *a, char *b)
 {
     if(!isatty(fileno(stdin)) && !isatty(fileno(stdout)))
@@ -1627,6 +2050,9 @@ void FREECMD(char *a, char *b)
 #ifdef mc68000
 # define READCMD(a,b,c) b = READLINE(a,c)
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static int qfixgeometry (QXL * qxl, short mflag, char **av)
 {
     char *spc=NULL;
@@ -1668,28 +2094,47 @@ static int qfixgeometry (QXL * qxl, short mflag, char **av)
 }
 #endif
 
+/*--------------------------------------------------------------------
+ * FORMAT Command.
+ * Formats a brand new QXL file. Called from main() with mflag = 0.
+ * The parameters in av are QXL filename, Size in mb, label. The code
+ * below assumes that any of those can be NULL, but you cannot call
+ * qxltools with -W and not supply the whole set of parameters. :)
+ *--------------------------------------------------------------------*/
 static int qformat (QXL * qxl, short mflag, char **av)
 {
     char cmd[LINSIZ];
     char *pcmd;
+
+    /* Buffer overflow alert!
+     * If I am stupid enough to supply a long set of parameters, 
+     * this buffer overflows into whatever comes after it in the program. 
+     * NOT GOOD! */
     char lab[32];
 
     char *fn = NULL, *size = NULL, *label = NULL;
 
     if (*av)
     {
+        /* Get QXL Filename to create. */
         fn = *av++;
+
         if (*av)
         {
+            /* Get size in MB. */
             size = *av++;
+
             if (*av)
             {
+                /* The remaining parameters are the QXL file's label. */
                 concatargs (av, lab);
                 label = lab;
+                fputs(label, stderr);
             }
         }
     }
 
+    /* This code is dead, it never gets called. */
     if (label == NULL || *label == 0)
     {
         if ((pcmd = READLINE ("QXL File name : ", cmd)) != NULL)
@@ -1719,11 +2164,13 @@ static int qformat (QXL * qxl, short mflag, char **av)
         if (q &&
                 (q->fd = open (fn, fmode, 0666)) != -1)
         {
-            unsigned ts;
-            u_short bs;
-            u_short ss;
+            /*u_short bs;*/
+            unsigned ss;
 
-            /* get the size in MB - Error trapping? None? */
+            /* Get the size in MB - Error trapping? None? 
+             * Possible check for a zero return? That's what 
+             * we get when no valid conversion happened.
+             * ND 2019. */
             ss = strtoul (size, NULL, 10);
 
             /* Looks like we are testing if there's room for the file. */
@@ -1733,24 +2180,19 @@ static int qformat (QXL * qxl, short mflag, char **av)
 #ifdef HAVE_FTRUNCATE
             ftruncate(q->fd, (ss << 20));
 #endif
-            /* Size is between 1 and 256 MB. Why the upper limit? */
+            /* Size must be between 1 and 256 MB. 
+             * Why the upper limit? 
+             * ND 2019. */
             if (ss < 1)
                 ss = 1;
 
             if (ss > 256)
                 ss = 256;
 
-            /* bs = sectorsPerGroup and is 4 minimum*/
-            bs = ceil((double)ss / 32.0);
-            bs = (bs < 4) ? 4 : bs;
-
-            /* ts = numberOfGroupsSectors = MB << 11 */
-            ts = ss << 11;
-
             q->mode = fmode;
 
-            /* bs = sectorsPerBlock, ts = numberOfGroupsSectors */
-            init (q, label, bs, ts);
+            /* I changed this to simply use the size in bytes. ND 2019 */
+            init (q, label, ss << 20);
             close (q->fd);
         }
         else
@@ -1773,6 +2215,10 @@ static int qformat (QXL * qxl, short mflag, char **av)
 }
 
 
+/*--------------------------------------------------------------------
+ * SHELL Command.
+ * Opens a shell session on the OS.
+ *--------------------------------------------------------------------*/
 static int qsystem (QXL * qxl, short mflag, char **av)
 {
     char cmd[1024], *c;
@@ -1794,10 +2240,13 @@ static int qsystem (QXL * qxl, short mflag, char **av)
     return 0;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static int clone_cb (QXL * sqxl, QLDIR * d, void *q, void *pb, u_short c)
 {
     QXL *dqxl = (QXL *)q;
-    int flen;
+    /* UNUSED: int flen; */
     char *sd, *dd;
     int nsd;
     char df[128];
@@ -1816,7 +2265,7 @@ static int clone_cb (QXL * sqxl, QLDIR * d, void *q, void *pb, u_short c)
             strcat(df, "_");
         }
 
-        flen = d->length - sizeof (QLDIR);
+        /* UNUSED: flen = d->length - sizeof (QLDIR); */
         if(d->type == 0xff)
         {
             qcd(dqxl, 0, NULL);
@@ -1846,6 +2295,9 @@ static int clone_cb (QXL * sqxl, QLDIR * d, void *q, void *pb, u_short c)
     return 0;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static int makeclone (QXL * sqxl, QXL *dqxl, char *paths)
 {
     QLDIR *buf;
@@ -1866,6 +2318,9 @@ static int makeclone (QXL * sqxl, QXL *dqxl, char *paths)
 # define SEP ':'
 #endif
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static char *initpath(QXL *qxl, char *dpath)
 {
 
@@ -1879,6 +2334,10 @@ static char *initpath(QXL *qxl, char *dpath)
     return dpath;
 }
 
+/*--------------------------------------------------------------------
+ * CLONE Command.
+ * Clones the current QXL file.
+ *--------------------------------------------------------------------*/
 static int qclone(QXL * qxl, short mflag, char **av)
 {
     QXL *sqxl, *dqxl, *lxq = NULL;
@@ -1994,6 +2453,9 @@ static int qclone(QXL * qxl, short mflag, char **av)
     return rv;
 }
 
+/*--------------------------------------------------------------------
+ *
+ *--------------------------------------------------------------------*/
 static int qchgmode(QXL *qxl)
 {
     char *p,*q;
@@ -2009,6 +2471,10 @@ static int qchgmode(QXL *qxl)
     return 0;
 }
 
+/*--------------------------------------------------------------------
+ * RW Command.
+ * Changes the current QXL file to read-write.
+ *--------------------------------------------------------------------*/
 static int qrwmode (QXL* qxl, short mflag, char **av)
 {
     qxl->mode &= ~O_RDONLY;
@@ -2016,6 +2482,10 @@ static int qrwmode (QXL* qxl, short mflag, char **av)
     return qchgmode(qxl);
 }
 
+/*--------------------------------------------------------------------
+ * RO Command.
+ * Changes the current QXL file to read-only.
+ *--------------------------------------------------------------------*/
 static int qromode (QXL* qxl, short mflag, char **av)
 {
     qxl->mode &= ~O_RDWR;
@@ -2023,43 +2493,57 @@ static int qromode (QXL* qxl, short mflag, char **av)
     return qchgmode(qxl);
 }
 
+/*--------------------------------------------------------------------
+ * The command table. The format is:
+ * Command-name, function to call, brief help text, flags.
+ *--------------------------------------------------------------------*/
 static JTBL jtbl[] =
 {
-    {"cd", qcd, QX_OPEN},
-    {"lslr", qlslr, QX_TEXT | QX_OPEN},
-    {"ls", qls, QX_TEXT | QX_OPEN},
-    {"dump", qdump, QX_OPEN},
-    {"pwd", qpwd, QX_TEXT | QX_OPEN},
-    {"cat", qcp, QX_OPEN},
-    {"cp", qcp, QX_OPEN},
+    {"cd", qcd, "Changes the QXL working directory.", QX_OPEN},
+    {"lslr", qlslr, "List the contents of the current QXL directory, and sub-directories. See 'dirr'.", QX_TEXT | QX_OPEN},
+    {"dirr", qlslr, "List the contents of the current QXL directory, and sub-directories. See 'lslr'.", QX_TEXT | QX_OPEN},
+    {"ls", qls, "List the contents of the current QXL directory. See 'dir'.", QX_TEXT | QX_OPEN},
+    {"dir", qls, "List the contents of the current QXL directory. See 'ls'.", QX_TEXT | QX_OPEN},
+    {"dump", qdump, "Dumps the current QXL directory structure, warts and all!", QX_OPEN},
+    {"pwd", qpwd,"Displays the current QXL working directory name.", QX_TEXT | QX_OPEN},
+    {"cat", qcp,"Types/Copies a QXL file converting LF to CR/LF.. See 'cp'.", QX_OPEN},
+    {"cp", qcp,"Types/Copies a QXL file converting LF to CR/LF. See 'cat'.", QX_OPEN},
 #ifdef NEED_DOS_FUNCTIONS
-    {"tcat", qcp, QX_TEXT | QX_OPEN},
-    {"tcp", qcp, QX_TEXT | QX_OPEN},
-    {"twr", qwrite, QX_TEXT | QX_OPEN},
+    {"tcat", qcp,"See 'cat' but no conversion of LF takes place.", QX_TEXT | QX_OPEN},
+    {"tcp", qcp,"See 'cp' but no conversion of LF takes place.", QX_TEXT | QX_OPEN},
+    {"twr", qwrite,"see 'wr' but no conversion of CR/LF takes place", QX_TEXT | QX_OPEN},
+    {"twrite", qwrite,"see 'write' but no conversion of CR/LF takes place", QX_TEXT | QX_OPEN},
 #endif
-    {"info", qinfo, QX_TEXT | QX_OPEN},
-    {"quit", quit},
-    {"exit", quit},
-    {"init", qinit, QX_OPEN},
-    {"wr", qwrite, QX_OPEN},
-    {"rmdir", qrmdir, QX_OPEN},
-    {"rm", qrm, QX_OPEN},
-    {"mkdir", qmkdir, QX_OPEN},
-    {"version", version},
-    {"help", help},
-    {"open", qxlopen},
-    {"close", qclose, QX_OPEN},
-    {"format", qformat},
-    {"shell", qsystem},
-    {"clone", qclone, QX_OPEN},
-    {"RO", qromode, QX_OPEN},
-    {"RW", qrwmode, QX_OPEN},
+    {"info", qinfo, "Displays brief information about the current QXL file.", QX_TEXT | QX_OPEN},
+    {"header", qheader, "Displays the QLWA header for the current QXL file.", QX_TEXT | QX_OPEN},
+    {"quit", quit, "Exits from 'qxltool'. See 'exit'."},
+    {"exit", quit, "Exits from 'qxltool'. See 'quit'."},
+    {"init", qinit, "Reformats the current QXL file to the same size as before.", QX_OPEN},
+    {"wr", qwrite, "Writes a host file into the current QXL directory. Converts CR/LF to LF. See 'write'.", QX_OPEN},
+    {"write", qwrite, "Writes a host file into the current QXL directory. Converts CR/LF to LF. See 'wr'.", QX_OPEN},
+    {"rmdir", qrmdir, "Deletes a QXL directory, which must be empty.", QX_OPEN},
+    {"rm", qrm, "Deletes a file from the QXL file.", QX_OPEN},
+    {"mkdir", qmkdir, "Creates a new QXL directory within the current one.", QX_OPEN},
+    {"version", version, "Display 'qxltool' version and host OS."},
+    {"help", help, "Displays this potentially helpful text!"},
+    {"open", qxlopen, "Opens an existing QXL file for processing."},
+    {"close", qclose, "Closes the current QXL file.", QX_OPEN},
+    {"format", qformat, "Creates and formats a new QXL file."},
+    {"shell", qsystem, "Spawns a shell. (To the OS)."},
+    {"clone", qclone, "Copies all/part of a QXL file to another one.", QX_OPEN},
+    {"RO", qromode, "Makes QXL file read-only.", QX_OPEN},
+    {"RW", qrwmode, "Makes QXL file read-write.", QX_OPEN},
 #ifdef mc68000
-    {"fix_geometry", qfixgeometry},
+    {"fix_geometry", qfixgeometry, "Fixes the disc geometry to what SMSQ expects."},
 #endif
     {NULL, NULL}
 };
 
+/*--------------------------------------------------------------------
+ * HELP Command.
+ * Displays help. Actually, just displays the command table's list of
+ * Commands.
+ *--------------------------------------------------------------------*/
 static int help (QXL * qxl, short mflag, char **av)
 {
     JTBL *j;
@@ -2067,12 +2551,15 @@ static int help (QXL * qxl, short mflag, char **av)
 
     for (j = jtbl; j->name; j++)
     {
-        fprintf (qxl->fp, "\t%s\n", j->name);
+        fprintf (qxl->fp, "\t%s\t%s\n", j->name, j->helpText);
     }
     fputs ("\nRead the fine manual for more information\n", qxl->fp);
     return 0;
 }
 
+/*--------------------------------------------------------------------
+ * Usage - displayed when the command line is incorrect.
+ *--------------------------------------------------------------------*/
 static void ShowCmdHelp()
 {
     char *txt[] =
@@ -2082,7 +2569,7 @@ static void ShowCmdHelp()
         "variable is named QXL_FILE is used",
         "",
         "qxltool defaults to a readonly QXL.WIN file to protect your data,",
-        "if you're feeling brave, you can run qxltool is read-write mode",
+        "if you're feeling brave, you can run qxltool in read-write mode",
         "by giving the '-w' option.",
         "",
         "\tqxltool -w /cdrom/qxl.win",
@@ -2114,20 +2601,30 @@ static void ShowCmdHelp()
     }
 }
 
-
+/*====================================================================
+ * Start Here. There must be at least one parameter, the file name,
+ * unless the environment variable QXL_FILE is set, in which case it
+ * will be used.
+ *====================================================================*/
 int main (int ac, char **av)
 {
 
-    char *fn;
-    int c;
-    int defmod = O_RDONLY | O_BINARY;
-    char *lcmd = NULL;
+    char *fn;                               /* QXL file name */
+    int c;                                  /* Commandline switches */
+    int defmod = O_RDONLY | O_BINARY;       /* Default open mode */
+    char *lcmd = NULL;                      /* -c option's command to execute */
 
     QXL *qxl = malloc (sizeof (QXL));
     memset (qxl, 0, sizeof (QXL));
 #ifdef __unix__
     signal (SIGPIPE, SIG_IGN);
 #endif
+
+    /* Do we have any options?
+     * -c = Run a qxltool command and exit.
+     * -w = Open QXL file in read-write mode.
+     * -W = Allows QXL file to be formatted.
+     */
     while ((c = getopt (ac, av, "wWc:")) != EOF)
     {
         switch (c)
@@ -2143,15 +2640,26 @@ int main (int ac, char **av)
         }
     }
 
+    /* Look for the QXL filename, or use a valid default. */
     fn = defargs (*(av + optind));
 
-    qxl->mode |= defmod;
+    qxl->mode |= defmod;                    /* Defaults to read only mode */
 
-    if (ac - optind > 2)
+    /* If requested, create and format a new QXL file first.
+     * 
+     * something like: qxltool -W QXL_filename MB label for example:
+     *
+     * qxltool -W new_qlx.win 30 "30MB QXL File"
+     */
+    if (ac - optind > 2)    
     {
         qformat (qxl, 0, av + optind);
     }
 
+    fprintf(stderr, "Size of DIR (64): %d\n", (int)sizeof(QLDIR));
+    fprintf(stderr, "Size of TIME_T (4): %d\n", (int)sizeof(time_t));
+
+    /* Open the QXL file and loop around processing commands. */
     if ((openqxl (qxl, fn)) != -1)
     {
         char cmd[LINSIZ];
@@ -2162,6 +2670,7 @@ int main (int ac, char **av)
             JTBL *j;
             char **args;
 
+            /* Did we have a -c command supplied? */
             if(lcmd)
             {
 #ifndef HAVE_LIBREADLINE
@@ -2180,11 +2689,13 @@ int main (int ac, char **av)
 
             ptr = pcmd + strspn (pcmd, "\t ");
 
+            /* Search the command table for the supplied command. */
             for (j = jtbl; j->name; j++)
             {
                 int n = strlen (j->name);
                 if (memcmp (ptr, j->name, n) == 0)
                 {
+                    /* We have a valid command. Deal with it. */
                     strim (ptr);
                     while (*(ptr + n) > ' ')
                         n++;
@@ -2195,28 +2706,42 @@ int main (int ac, char **av)
                     }
                     else
                     {
+                        /* Extract arguments for the command to be executed. */
                         args = openout (qxl, ptr + n, j->flag);
+
+                        /* Call the appropriate function here */
                         if ((j->func) (qxl, j->flag, args))
                         {
                             fputs ("Invalid argument(s)\n", stderr);
                         }
+
+                        /* Reclaim any allocated memory for the arguments above. */
                         closeout (qxl, args);
                     }
                     break;
                 }
             }
+
+            /* Invalid command. */
             if (*pcmd && j->name == NULL)
             {
                 fprintf (stdout, "Invalid command %s\n", pcmd);
             }
+
+            /* Add cmd to the history, reclaim memory for pcmd. */
             FREECMD (cmd, pcmd);
+
+            /* Only process one -c command then exit. */
             if(lcmd) break;
         }
+
+        /* Sign off when NOT called with -c. */
         if(!lcmd && isatty(fileno(stdout)))
             fputs ("quit\n", stdout);
     }
     else
     {
+        /* openqxl() failed. Show some command line help. */
         ShowCmdHelp();
     }
 

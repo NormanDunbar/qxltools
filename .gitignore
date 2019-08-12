@@ -59,3 +59,4 @@ qxl.win
 config.log
 config.cache
 config.status
+.vscode

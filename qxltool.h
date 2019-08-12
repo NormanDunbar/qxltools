@@ -10,6 +10,11 @@
 
 #include <sys/time.h>
 #include <unistd.h>
+
+#ifndef QDOS
+    #include <stdint.h>
+#endif
+
 #include "version.h"
 
 #define UNIX2QL    283996800
@@ -61,44 +66,53 @@ extern void add_history(char *);
 
 #define QLPATH_MAX 36
 
+#ifndef QDOS
+    /* QDOS doesn't do pragmas. Other systems need byte alignment. */
+    #pragma pack(push, 1)
+#endif
+
 typedef struct
 {
     char id[4];                 /* "QLWA"  */
-    u_short nameSize;           /* Size of 'disc' name */
+    uint16_t nameSize;           /* Size of 'disc' name */
     u_char  name[20];           /* Disc name, space padded */
-    u_short spare PACKED;       /* Unused */
-    u_short rand;               /* System random number */
-    u_short access;             /* Update counter */
-    u_short interleave;         /* Interleave factor qxl = 0 */
-    u_short sectorsPerGroup;    /* Sectors per group */
-    u_short sectorsPerTrack;    /* Sectors per track qxl = 0 */
-    u_short tracksPerCylinder;  /* Tracks per cylinder qxl =  0 */
-    u_short cylindersPerDrive;  /* Cylinders per drive qxl = 0 */
-    u_short numberOfGroups;     /* Number of groups */
-    u_short freeGroups;         /* Number of free groups */
-    u_short sectorsPerMap;      /* Sectors per map */
-    u_short numberOfMaps;       /* Number of maps qxl = 1 */
-    u_short firstFreeGroup;     /* First free group */
-    u_short rootDirectoryId;    /* Root director number */
-    u_long  rootDirectorySize PACKED;   /* Root directory length */
-    u_long  firstSectorPart PACKED;     /* First sector in this partition qxl = 0 */
-    u_short parkingCylinder;    /* Park cylinder qxl = 0 */
-    u_short map[1];             /* The map starts here ... */
+    uint16_t spare;              /* Unused */
+    uint16_t formatRandom;       /* Format random number */
+    uint16_t accessCount;        /* Update counter */
+    uint16_t interleave;         /* Interleave factor qxl = 0 */
+    uint16_t sectorsPerGroup;    /* Sectors per group */
+    uint16_t sectorsPerTrack;    /* Sectors per track qxl = 0 */
+    uint16_t tracksPerCylinder;  /* Tracks per cylinder qxl =  0 */
+    uint16_t cylindersPerDrive;  /* Cylinders per drive qxl = 0 */
+    uint16_t numberOfGroups;     /* Total number of groups */
+    uint16_t freeGroups;         /* Number of free groups */
+    uint16_t sectorsPerMap;      /* Sectors per map */
+    uint16_t numberOfMaps;       /* Number of maps qxl = 1 */
+    uint16_t firstFreeGroup;     /* First free group */
+    uint16_t rootDirectoryId;    /* Root director number */
+    uint32_t  rootDirectorySize;  /* Root directory length */
+    uint32_t  firstSectorPart;    /* First sector in this partition qxl = 0 */
+    uint16_t parkingCylinder;    /* Park cylinder qxl = 0 */
+    uint16_t map[1];             /* The map starts here ... */
 } HEADER;
 
 typedef struct
 {
-    u_long length;
-    u_short type;
-    u_long data PACKED;
-    u_long  dummy1 PACKED;
-    u_short nlen;
-    u_char name[QLPATH_MAX];
-    time_t date PACKED;
-    u_short dummy2;
-    u_short map;
-    u_long dummy3;
+    uint32_t length;
+    uint16_t type;
+    uint32_t data;
+    uint32_t  dummy1;
+    uint16_t nlen;
+    uint8_t name[QLPATH_MAX];
+    time_t date;
+    uint16_t dummy2;
+    uint16_t map;
+    uint32_t dummy3;
 } QLDIR;
+
+#ifndef QDOS
+    #pragma pack(pop)
+#endif
 
 typedef struct 
 {
@@ -107,7 +121,7 @@ typedef struct
         char xtcc[4];
         long x;
     } x;
-    u_long dlen;
+    uint32_t dlen;
 } XTCC;
 
 typedef struct
@@ -140,6 +154,7 @@ typedef struct
 {
     char *name;
     ACTFUNC func;
+    char *helpText;
     short flag;
 } JTBL;
 
