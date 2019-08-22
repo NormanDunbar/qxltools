@@ -27,11 +27,14 @@
 #include <sys/types.h>
 #include <math.h>
 
-#if defined(__unix__)
+
+#if defined __unix__ || defined __linux__
 # include <fnmatch.h>
 # define FNMATCH fnmatch
 # define FNEQUAL 0
-#elif defined(__WINNT) || defined(__GO32)
+#elif defined __WINNT || defined __NT__ || \
+      defined __WIN32__ || defined __WIN64__ || \
+      defined __MINGW32__ || defined __MINGW64__ || defined __GO32
 # ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 # else
@@ -305,9 +308,12 @@ static void d_normalise (QLDIR * d)
     SL (d, length);
     SW (d, type);
     SL (d, data);
+    SL (d, xtra);
     SW (d, nlen);
-    SL (d, date);
+    SL (d, updatedate);
+    SL (d, version);
     SW (d, map);
+    SL (d, backupdate);
 }
 
 /*--------------------------------------------------------------------
@@ -345,7 +351,7 @@ static int d_list (QXL * qxl, QLDIR * d, void *a, void *pb, u_short c)
         {
             size_t k;
 
-            tm = localtime (&d->date);
+            tm = localtime ((time_t *)&d->updatedate);
 #if defined (HAVE_STRFTIME)
             k = strftime (s + n, sizeof (s) - n,
                           "%d-%m-%y %H:%M:%S ", tm);
@@ -457,7 +463,7 @@ static int processdir (QXL * qxl, QLDIR * buf, QLDIR * cur,
     for (d = buf + 1; d < last; d++)
     {
         d_normalise (d);
-        d->date += QL2UNIX;
+        d->updatedate += QL2UNIX;
         if ((res = func (qxl, d, fn, pft, flag)) == 0)
         {
             if (d->type == 0xff && (flag & DO_RECURSE))
@@ -1205,26 +1211,26 @@ static int qinfo (QXL * qxl, short mflag, char **p)
  *--------------------------------------------------------------------*/
 static int qheader (QXL * qxl, short mflag, char **p)
 {
-    fprintf(qxl->fp, "QLWA identifier................................. '%4.4s'\n", qxl->h.id);
-    fprintf(qxl->fp, "Label size...................................... %d\n", qxl->h.nameSize);
-    fprintf(qxl->fp, "Label........................................... '%*.*s'\n", qxl->h.nameSize, qxl->h.nameSize, qxl->h.name);
-    fprintf(qxl->fp, "Spare - expecting 0............................. %d\n", qxl->h.spare);
-    fprintf(qxl->fp, "Format random number............................ %d\n", qxl->h.formatRandom);
-    fprintf(qxl->fp, "Access counter.................................. %d\n", qxl->h.accessCount);
-    fprintf(qxl->fp, "Interleave factor - expecting 0................. %d\n", qxl->h.interleave);
-    fprintf(qxl->fp, "Sectors per group............................... %d\n", qxl->h.sectorsPerGroup);
-    fprintf(qxl->fp, "Sectors per track - expecting 0................. %d\n", qxl->h.sectorsPerTrack);
-    fprintf(qxl->fp, "Tracks per cylinder - expecting 0............... %d\n", qxl->h.tracksPerCylinder);
-    fprintf(qxl->fp, "Cylinders per drive - expecting 0............... %d\n", qxl->h.cylindersPerDrive);
-    fprintf(qxl->fp, "Total number of groups.......................... %d\n", qxl->h.numberOfGroups);
-    fprintf(qxl->fp, "Number of free groups........................... %d\n", qxl->h.freeGroups);
-    fprintf(qxl->fp, "Sectors per map................................. %d\n", qxl->h.sectorsPerMap);
-    fprintf(qxl->fp, "Number of maps - expecting 1.................... %d\n", qxl->h.numberOfMaps);
-    fprintf(qxl->fp, "First free group................................ %d\n", qxl->h.firstFreeGroup);
-    fprintf(qxl->fp, "Root directory number........................... %d\n", qxl->h.rootDirectoryId);
-    fprintf(qxl->fp, "Root directory length........................... %ld\n", (long)qxl->h.rootDirectorySize);
-    fprintf(qxl->fp, "First sector in this partition - expecting 0.... %ld\n", (long)qxl->h.firstSectorPart);
-    fprintf(qxl->fp, "Parking cylinder - expecting 0.................. %d\n", qxl->h.parkingCylinder);
+    fprintf(stderr, "QLWA identifier................................. '%4.4s'\n", qxl->h.id);
+    fprintf(stderr, "Label size...................................... %d\n", qxl->h.nameSize);
+    fprintf(stderr, "Label........................................... '%*.*s'\n", qxl->h.nameSize, qxl->h.nameSize, qxl->h.name);
+    fprintf(stderr, "Spare - expecting 0............................. %d\n", qxl->h.spare);
+    fprintf(stderr, "Format random number............................ %d\n", qxl->h.formatRandom);
+    fprintf(stderr, "Access counter.................................. %d\n", qxl->h.accessCount);
+    fprintf(stderr, "Interleave factor - expecting 0................. %d\n", qxl->h.interleave);
+    fprintf(stderr, "Sectors per group............................... %d\n", qxl->h.sectorsPerGroup);
+    fprintf(stderr, "Sectors per track - expecting 0................. %d\n", qxl->h.sectorsPerTrack);
+    fprintf(stderr, "Tracks per cylinder - expecting 0............... %d\n", qxl->h.tracksPerCylinder);
+    fprintf(stderr, "Cylinders per drive - expecting 0............... %d\n", qxl->h.cylindersPerDrive);
+    fprintf(stderr, "Total number of groups.......................... %d\n", qxl->h.numberOfGroups);
+    fprintf(stderr, "Number of free groups........................... %d\n", qxl->h.freeGroups);
+    fprintf(stderr, "Sectors per map................................. %d\n", qxl->h.sectorsPerMap);
+    fprintf(stderr, "Number of maps - expecting 1.................... %d\n", qxl->h.numberOfMaps);
+    fprintf(stderr, "First free group................................ %d\n", qxl->h.firstFreeGroup);
+    fprintf(stderr, "Root directory number........................... %d\n", qxl->h.rootDirectoryId);
+    fprintf(stderr, "Root directory length........................... %ld\n", (long)qxl->h.rootDirectorySize);
+    fprintf(stderr, "First sector in this partition - expecting 0.... %ld\n", (long)qxl->h.firstSectorPart);
+    fprintf(stderr, "Parking cylinder - expecting 0.................. %d\n", qxl->h.parkingCylinder);
 
     return 0;
 }
@@ -1314,14 +1320,14 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
     }
     else
     {
-        f->date = 0;
+        f->updatedate = 0;
         f->map = c = getcluster (qxl, 0);
         lseek (qxl->fd, c * qxl->h.sectorsPerGroup, SEEK_SET);
         write (qxl->fd, buf, qxl->h.sectorsPerGroup);
         f->type = 0xff;
     }
 
-    f->date = ftim;
+    f->updatedate = ftim;
     f->length = nt + sizeof (QLDIR);
     f->data = ddata;
 
@@ -1710,14 +1716,14 @@ static void concatargs (char **av, char *cmd)
  * This will include the map, the root directory etc. The map and 
  * header will be written later.
  */
-static void doFormat(QXL *qxl, unsigned totalSectors, u_short sectorSize)
+static void doFormat(QXL *qxl, unsigned totalSectors)
 {
     unsigned i;
 
     /* STACK OVERFLOW ALERT! */
-    char *oneBlockForFormatting = alloca(sectorSize);
+    char *oneBlockForFormatting = alloca(SECTORSIZE);
 
-    memset (oneBlockForFormatting, 0, sectorSize);
+    memset (oneBlockForFormatting, 0, SECTORSIZE);
 
 /*
     k = j = qxl->h.numberOfGroups / 20;
@@ -1728,7 +1734,7 @@ static void doFormat(QXL *qxl, unsigned totalSectors, u_short sectorSize)
 
     for (i = 0; i < totalSectors; i++)
     {
-        if (write (qxl->fd, oneBlockForFormatting, sectorSize) != sectorSize)
+        if (write (qxl->fd, oneBlockForFormatting, SECTORSIZE) != SECTORSIZE)
         {
             perror ("Format");
             exit (0);
@@ -1758,7 +1764,7 @@ static void init (QXL *qxl, char *lab, unsigned bytes)
     size_t n;
 
     u_short megaBytes;
-    u_short totalSectors;
+    u_long totalSectors;
     u_short sectorsPerGroup;
     u_short numberOfGroups;
     u_short sectorsPerMap;
@@ -1767,14 +1773,11 @@ static void init (QXL *qxl, char *lab, unsigned bytes)
     u_short firstFreeGroup;
     u_short freeGroups;
 
-    /* Size of a physical sector on disc. */
-    const int sectorSize = 512;
-
     /* Work header stuff out from size requested. */
     megaBytes = bytes / 1024 / 1024;
 
     /* Bytes / sectorSize = total sectors. */
-    totalSectors = bytes / sectorSize;
+    totalSectors = bytes / SECTORSIZE;
 
     /* Sectors per group is megabytes / 32, or 4 minimum. */
     sectorsPerGroup = ceil((double)megaBytes / 32.0);
@@ -1804,7 +1807,7 @@ static void init (QXL *qxl, char *lab, unsigned bytes)
     {
         /* Format the entire disc to the requested size. */
         fputs ("Formatting ....\n", stdout);
-        doFormat(qxl, totalSectors, sectorSize);
+        doFormat(qxl, totalSectors);
 
         /* Now build a QXL file header. */
         memset (&qxl->h, 0, sizeof (HEADER));
@@ -1859,29 +1862,8 @@ static void init (QXL *qxl, char *lab, unsigned bytes)
         /* Write the QLWA header, plus map[0]. */
         writeheader (qxl);
 
-    fprintf(stderr, "QLWA identifier................................. '%4.4s'\n", "QLWA");
-    fprintf(stderr, "Bytes........................................... '%d'\n", bytes);
-    fprintf(stderr, "Megabytes....................................... '%d'\n", megaBytes);
-    fprintf(stderr, "Label size...................................... %d\n", (int)n);
-    fprintf(stderr, "Label........................................... '%*.*s'\n", (int)n, (int)n,  lab);
-    fprintf(stderr, "Spare - expecting 0............................. %d\n", 0);
-    fprintf(stderr, "Format random number............................ %d\n", 1234);
-    fprintf(stderr, "Access counter.................................. %d\n", 1);
-    fprintf(stderr, "Interleave factor - expecting 0................. %d\n", 0);
-    fprintf(stderr, "Sectors per group............................... %d\n", sectorsPerGroup);
-    fprintf(stderr, "Sectors per track - expecting 0................. %d\n", 0);
-    fprintf(stderr, "Tracks per cylinder - expecting 0............... %d\n", 0);
-    fprintf(stderr, "Cylinders per drive - expecting 0............... %d\n", 0);
-    fprintf(stderr, "Total number of groups.......................... %d\n", numberOfGroups);
-    fprintf(stderr, "Number of free groups........................... %d\n", freeGroups);
-    fprintf(stderr, "Sectors per map................................. %d\n", sectorsPerMap);
-    fprintf(stderr, "Number of maps - expecting 1.................... %d\n", 1);
-    fprintf(stderr, "First free group................................ %d\n", firstFreeGroup);
-    fprintf(stderr, "Root directory number........................... %d\n", rootDirectoryId);
-    fprintf(stderr, "Root directory length........................... %d\n", (int)64);
-    fprintf(stderr, "First sector in this partition - expecting 0.... %d\n", (int)0);
-    fprintf(stderr, "Parking cylinder - expecting 0.................. %d\n", 0);
-
+        /* Display details of the file just formatted. */
+        qheader(qxl, 0, NULL); 
 
         /* Position after the header area => start of map[0]! */
         lseek (qxl->fd, sizeof (HEADER) - 2, SEEK_SET);
@@ -1905,7 +1887,7 @@ static void init (QXL *qxl, char *lab, unsigned bytes)
         /* The root directory entry needs a zero. */
         write(qxl->fd, &j, 2);
 
-        fputs (" Done\n", stdout);
+        fputs ("....Formatting done\n", stdout);
 
 #ifdef mc68000
         fputs(" you must fix the geometry before SMSQ can use this filesystem\n",stdout);
@@ -1937,16 +1919,20 @@ static void init (QXL *qxl, char *lab, unsigned bytes)
  *--------------------------------------------------------------------*/
 static int qinit (QXL * qxl, short mflag, char **av)
 {
-    /* BUFFER OVERFLOW ALERT!
-     * ND 1029. */
+    /* BUFFER OVERFLOW ALERT! **av is a LIST of strings and will
+     * be concatenated together with spaces between to form the
+     * disc label. 80 characters might not be enough. Why not just
+     * use quoted strings if spaces are required?
+     * ND 2019. */
     char lab[80];
     u_short bs = qxl->h.sectorsPerGroup;
     u_short ts = qxl->h.numberOfGroups;
+
+    /* Here comes the potential overflow.... */
     concatargs (av, lab);
 
-    /* I changed this to simply use the size in MB. ND 2019 */
-    /* init (qxl, lab, bs, ts); */
-    init (qxl, lab, bs * ts * 512);
+    /* Changed to use the size in MB. ND 2019 */
+    init (qxl, lab, bs * ts * SECTORSIZE);
     qcd(qxl, 0, 0);
     return 0;
 }
@@ -2129,7 +2115,6 @@ static int qformat (QXL * qxl, short mflag, char **av)
                 /* The remaining parameters are the QXL file's label. */
                 concatargs (av, lab);
                 label = lab;
-                fputs(label, stderr);
             }
         }
     }
@@ -2173,22 +2158,22 @@ static int qformat (QXL * qxl, short mflag, char **av)
              * ND 2019. */
             ss = strtoul (size, NULL, 10);
 
-            /* Looks like we are testing if there's room for the file. */
-            /* ss << 20 = size in bytes. */
-            lseek(q->fd, (ss << 20), SEEK_SET);
-            lseek(q->fd, 0, SEEK_SET);
-#ifdef HAVE_FTRUNCATE
-            ftruncate(q->fd, (ss << 20));
-#endif
-            /* Size must be between 1 and 256 MB. 
-             * Why the upper limit? 
-             * ND 2019. */
+            /* Size must be between 1 and 255 MB. If the disc was 256 MB then
+             * numberOfGroups would be 65536 -> too big for a 16 bit word! */
             if (ss < 1)
                 ss = 1;
 
-            if (ss > 256)
-                ss = 256;
+            if (ss > 255)
+                ss = 255;
 
+            /* Create the file at the size requested
+             * ss << 20 = size in bytes. */
+            lseek(q->fd, (ss << 20), SEEK_SET);
+            lseek(q->fd, 0, SEEK_SET);
+
+#ifdef HAVE_FTRUNCATE
+            ftruncate(q->fd, (ss << 20));
+#endif
             q->mode = fmode;
 
             /* I changed this to simply use the size in bytes. ND 2019 */
@@ -2288,7 +2273,7 @@ static int clone_cb (QXL * sqxl, QLDIR * d, void *q, void *pb, u_short c)
             qcd(dqxl, 0, &p);
             args[0] = (char *)sqxl->fp;
             args[1] = (char *)d->name + nfn; // cast for c68, alas
-            args[2] = (char *)d->date;
+            args[2] = (char *)d->updatedate;
             qwrite(dqxl, (short)QX_ARGV0_IS_FP, args);
         }
     }
@@ -2656,9 +2641,6 @@ int main (int ac, char **av)
         qformat (qxl, 0, av + optind);
     }
 
-    fprintf(stderr, "Size of DIR (64): %d\n", (int)sizeof(QLDIR));
-    fprintf(stderr, "Size of TIME_T (4): %d\n", (int)sizeof(time_t));
-
     /* Open the QXL file and loop around processing commands. */
     if ((openqxl (qxl, fn)) != -1)
     {
@@ -2695,7 +2677,13 @@ int main (int ac, char **av)
                 int n = strlen (j->name);
                 if (memcmp (ptr, j->name, n) == 0)
                 {
-                    /* We have a valid command. Deal with it. */
+                    /* We have a valid command. Deal with it.
+                     * Sort of valid. 'ls' will work, as will 'lsx'
+                     * because we only check the first two characters as 'ls' 
+                     * is in the command table. Testing the size of ptr would fail
+                     * if ptr has parameters. C'est lavvie! :)
+                     */
+
                     strim (ptr);
                     while (*(ptr + n) > ' ')
                         n++;

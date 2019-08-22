@@ -1,0 +1,276 @@
+\hypertarget{struct_h_e_a_d_e_r}{}\section{H\+E\+A\+D\+ER Struct Reference}
+\label{struct_h_e_a_d_e_r}\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+
+
+{\ttfamily \#include $<$qxltool.\+h$>$}
+
+\subsection*{Data Fields}
+\begin{DoxyCompactItemize}
+\item 
+char \hyperlink{struct_h_e_a_d_e_r_ace593da5319500315498c8f845ee2368}{id} \mbox{[}4\mbox{]}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_a0b15bb8f9aee33d3e49dcd95093bf88a}{name\+Size}
+\item 
+u\+\_\+char \hyperlink{struct_h_e_a_d_e_r_a09712874ff8b1883dffe908ad2337d05}{name} \mbox{[}20\mbox{]}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_ae186db2aeadfd250f02cd5a4cce4054f}{spare}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_acd79f29d21866fa067b0feca592a8b65}{format\+Random}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_afc2d7713c108e80878e5e57fa3b8f082}{access\+Count}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_abd3763b764e7f73b3ce499116279e377}{interleave}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_aec959e3993607a7c8a039a03639cac44}{sectors\+Per\+Group}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_a42886f9109ee1759d5972e871f0689a8}{sectors\+Per\+Track}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_a583b97c33089d32720d81b800855ef34}{tracks\+Per\+Cylinder}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_acb15363433a666b3697fadb3d1bbfb6d}{cylinders\+Per\+Drive}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_a0d376f9b00a3d00a747929a325a5ca35}{number\+Of\+Groups}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_ade875077d30252b3c29f1798215714b7}{free\+Groups}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_a64a257d7a41c66c743cf02ce75a7ed69}{sectors\+Per\+Map}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_ad0f24f728c7ece99956bae1a9c6726f1}{number\+Of\+Maps}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_ab853d0b9724f018631a3f861e272d36c}{first\+Free\+Group}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_ad0d94bf1241a8ec122e5ac3e6c19a841}{root\+Directory\+Id}
+\item 
+uint32\+\_\+t \hyperlink{struct_h_e_a_d_e_r_a0ac17e24e43742a704cce1364be65ed8}{root\+Directory\+Size}
+\item 
+uint32\+\_\+t \hyperlink{struct_h_e_a_d_e_r_a168350b9db93e729a465c0f49f205014}{first\+Sector\+Part}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_a00f36c99fabc0f8e10249e80e54ca9c8}{parking\+Cylinder}
+\item 
+uint16\+\_\+t \hyperlink{struct_h_e_a_d_e_r_a29b7fd8fc79af9f8e87044e61338b35b}{map} \mbox{[}1\mbox{]}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\hyperlink{struct_q_x_l}{Q\+XL} File Header. This structure describes and defines the header part of a \hyperlink{struct_q_x_l}{Q\+XL} Hard drive file. It should always be byte aligned and is 64 + 2 bytes in size. Any other value for the header size is incorrect. The header is actually only 64 bytes long, but the code is appending on the first 16 bit word in the map, for some, as yet, unknown reason. \+:) 
+
+Definition at line 87 of file qxltool.\+h.
+
+
+
+\subsection{Field Documentation}
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_afc2d7713c108e80878e5e57fa3b8f082}\label{struct_h_e_a_d_e_r_afc2d7713c108e80878e5e57fa3b8f082}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!access\+Count@{access\+Count}}
+\index{access\+Count@{access\+Count}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{access\+Count}{accessCount}}
+{\footnotesize\ttfamily uint16\+\_\+t access\+Count}
+
+Update counter 
+
+Definition at line 94 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_acb15363433a666b3697fadb3d1bbfb6d}\label{struct_h_e_a_d_e_r_acb15363433a666b3697fadb3d1bbfb6d}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!cylinders\+Per\+Drive@{cylinders\+Per\+Drive}}
+\index{cylinders\+Per\+Drive@{cylinders\+Per\+Drive}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{cylinders\+Per\+Drive}{cylindersPerDrive}}
+{\footnotesize\ttfamily uint16\+\_\+t cylinders\+Per\+Drive}
+
+Cylinders per drive qxl = 0 
+
+Definition at line 99 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_ab853d0b9724f018631a3f861e272d36c}\label{struct_h_e_a_d_e_r_ab853d0b9724f018631a3f861e272d36c}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!first\+Free\+Group@{first\+Free\+Group}}
+\index{first\+Free\+Group@{first\+Free\+Group}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{first\+Free\+Group}{firstFreeGroup}}
+{\footnotesize\ttfamily uint16\+\_\+t first\+Free\+Group}
+
+First free group 
+
+Definition at line 104 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a168350b9db93e729a465c0f49f205014}\label{struct_h_e_a_d_e_r_a168350b9db93e729a465c0f49f205014}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!first\+Sector\+Part@{first\+Sector\+Part}}
+\index{first\+Sector\+Part@{first\+Sector\+Part}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{first\+Sector\+Part}{firstSectorPart}}
+{\footnotesize\ttfamily uint32\+\_\+t first\+Sector\+Part}
+
+First sector in this partition qxl = 0 
+
+Definition at line 107 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_acd79f29d21866fa067b0feca592a8b65}\label{struct_h_e_a_d_e_r_acd79f29d21866fa067b0feca592a8b65}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!format\+Random@{format\+Random}}
+\index{format\+Random@{format\+Random}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{format\+Random}{formatRandom}}
+{\footnotesize\ttfamily uint16\+\_\+t format\+Random}
+
+Format random number 
+
+Definition at line 93 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_ade875077d30252b3c29f1798215714b7}\label{struct_h_e_a_d_e_r_ade875077d30252b3c29f1798215714b7}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!free\+Groups@{free\+Groups}}
+\index{free\+Groups@{free\+Groups}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{free\+Groups}{freeGroups}}
+{\footnotesize\ttfamily uint16\+\_\+t free\+Groups}
+
+Number of free groups 
+
+Definition at line 101 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_ace593da5319500315498c8f845ee2368}\label{struct_h_e_a_d_e_r_ace593da5319500315498c8f845ee2368}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!id@{id}}
+\index{id@{id}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{id}{id}}
+{\footnotesize\ttfamily char id\mbox{[}4\mbox{]}}
+
+\char`\"{}\+Q\+L\+W\+A\char`\"{} 
+
+Definition at line 89 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_abd3763b764e7f73b3ce499116279e377}\label{struct_h_e_a_d_e_r_abd3763b764e7f73b3ce499116279e377}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!interleave@{interleave}}
+\index{interleave@{interleave}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{interleave}{interleave}}
+{\footnotesize\ttfamily uint16\+\_\+t interleave}
+
+Interleave factor qxl = 0 
+
+Definition at line 95 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a29b7fd8fc79af9f8e87044e61338b35b}\label{struct_h_e_a_d_e_r_a29b7fd8fc79af9f8e87044e61338b35b}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!map@{map}}
+\index{map@{map}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{map}{map}}
+{\footnotesize\ttfamily uint16\+\_\+t map\mbox{[}1\mbox{]}}
+
+The map starts here ... 
+
+Definition at line 109 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a09712874ff8b1883dffe908ad2337d05}\label{struct_h_e_a_d_e_r_a09712874ff8b1883dffe908ad2337d05}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!name@{name}}
+\index{name@{name}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{name}{name}}
+{\footnotesize\ttfamily u\+\_\+char name\mbox{[}20\mbox{]}}
+
+Disc name, space padded 
+
+Definition at line 91 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a0b15bb8f9aee33d3e49dcd95093bf88a}\label{struct_h_e_a_d_e_r_a0b15bb8f9aee33d3e49dcd95093bf88a}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!name\+Size@{name\+Size}}
+\index{name\+Size@{name\+Size}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{name\+Size}{nameSize}}
+{\footnotesize\ttfamily uint16\+\_\+t name\+Size}
+
+Size of \textquotesingle{}disc\textquotesingle{} name 
+
+Definition at line 90 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a0d376f9b00a3d00a747929a325a5ca35}\label{struct_h_e_a_d_e_r_a0d376f9b00a3d00a747929a325a5ca35}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!number\+Of\+Groups@{number\+Of\+Groups}}
+\index{number\+Of\+Groups@{number\+Of\+Groups}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{number\+Of\+Groups}{numberOfGroups}}
+{\footnotesize\ttfamily uint16\+\_\+t number\+Of\+Groups}
+
+Total number of groups 
+
+Definition at line 100 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_ad0f24f728c7ece99956bae1a9c6726f1}\label{struct_h_e_a_d_e_r_ad0f24f728c7ece99956bae1a9c6726f1}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!number\+Of\+Maps@{number\+Of\+Maps}}
+\index{number\+Of\+Maps@{number\+Of\+Maps}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{number\+Of\+Maps}{numberOfMaps}}
+{\footnotesize\ttfamily uint16\+\_\+t number\+Of\+Maps}
+
+Number of maps qxl = 1 
+
+Definition at line 103 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a00f36c99fabc0f8e10249e80e54ca9c8}\label{struct_h_e_a_d_e_r_a00f36c99fabc0f8e10249e80e54ca9c8}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!parking\+Cylinder@{parking\+Cylinder}}
+\index{parking\+Cylinder@{parking\+Cylinder}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{parking\+Cylinder}{parkingCylinder}}
+{\footnotesize\ttfamily uint16\+\_\+t parking\+Cylinder}
+
+Park cylinder qxl = 0 
+
+Definition at line 108 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_ad0d94bf1241a8ec122e5ac3e6c19a841}\label{struct_h_e_a_d_e_r_ad0d94bf1241a8ec122e5ac3e6c19a841}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!root\+Directory\+Id@{root\+Directory\+Id}}
+\index{root\+Directory\+Id@{root\+Directory\+Id}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{root\+Directory\+Id}{rootDirectoryId}}
+{\footnotesize\ttfamily uint16\+\_\+t root\+Directory\+Id}
+
+Root director number 
+
+Definition at line 105 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a0ac17e24e43742a704cce1364be65ed8}\label{struct_h_e_a_d_e_r_a0ac17e24e43742a704cce1364be65ed8}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!root\+Directory\+Size@{root\+Directory\+Size}}
+\index{root\+Directory\+Size@{root\+Directory\+Size}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{root\+Directory\+Size}{rootDirectorySize}}
+{\footnotesize\ttfamily uint32\+\_\+t root\+Directory\+Size}
+
+Root directory length 
+
+Definition at line 106 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_aec959e3993607a7c8a039a03639cac44}\label{struct_h_e_a_d_e_r_aec959e3993607a7c8a039a03639cac44}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!sectors\+Per\+Group@{sectors\+Per\+Group}}
+\index{sectors\+Per\+Group@{sectors\+Per\+Group}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{sectors\+Per\+Group}{sectorsPerGroup}}
+{\footnotesize\ttfamily uint16\+\_\+t sectors\+Per\+Group}
+
+Sectors per group 
+
+Definition at line 96 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a64a257d7a41c66c743cf02ce75a7ed69}\label{struct_h_e_a_d_e_r_a64a257d7a41c66c743cf02ce75a7ed69}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!sectors\+Per\+Map@{sectors\+Per\+Map}}
+\index{sectors\+Per\+Map@{sectors\+Per\+Map}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{sectors\+Per\+Map}{sectorsPerMap}}
+{\footnotesize\ttfamily uint16\+\_\+t sectors\+Per\+Map}
+
+Sectors per map 
+
+Definition at line 102 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a42886f9109ee1759d5972e871f0689a8}\label{struct_h_e_a_d_e_r_a42886f9109ee1759d5972e871f0689a8}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!sectors\+Per\+Track@{sectors\+Per\+Track}}
+\index{sectors\+Per\+Track@{sectors\+Per\+Track}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{sectors\+Per\+Track}{sectorsPerTrack}}
+{\footnotesize\ttfamily uint16\+\_\+t sectors\+Per\+Track}
+
+Sectors per track qxl = 0 
+
+Definition at line 97 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_ae186db2aeadfd250f02cd5a4cce4054f}\label{struct_h_e_a_d_e_r_ae186db2aeadfd250f02cd5a4cce4054f}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!spare@{spare}}
+\index{spare@{spare}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{spare}{spare}}
+{\footnotesize\ttfamily uint16\+\_\+t spare}
+
+Unused 
+
+Definition at line 92 of file qxltool.\+h.
+
+\mbox{\Hypertarget{struct_h_e_a_d_e_r_a583b97c33089d32720d81b800855ef34}\label{struct_h_e_a_d_e_r_a583b97c33089d32720d81b800855ef34}} 
+\index{H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}!tracks\+Per\+Cylinder@{tracks\+Per\+Cylinder}}
+\index{tracks\+Per\+Cylinder@{tracks\+Per\+Cylinder}!H\+E\+A\+D\+ER@{H\+E\+A\+D\+ER}}
+\subsubsection{\texorpdfstring{tracks\+Per\+Cylinder}{tracksPerCylinder}}
+{\footnotesize\ttfamily uint16\+\_\+t tracks\+Per\+Cylinder}
+
+Tracks per cylinder qxl = 0 
+
+Definition at line 98 of file qxltool.\+h.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/data/\+Source\+Code/qxltools/\hyperlink{qxltool_8h}{qxltool.\+h}\end{DoxyCompactItemize}

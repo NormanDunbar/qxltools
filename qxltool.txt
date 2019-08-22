@@ -270,7 +270,7 @@ the current directory or relative to it.
 All examples are taken from the demo QXL.WIN file on Peta Ja\"ger's
 web site. 
 
-Comments are preceeded by a hash.
+Comments are preceded by a hash.
 
 cd: Changes the current working directory.
 ------------------------------------------
@@ -358,9 +358,9 @@ pwd: Display current directory
  > pwd
  cwd is ""
 
-cat: Copy a file (to "stdout" or redircted) (tcat for DOS text files)
+cat: Copy a file (to "stdout" or redirected) (tcat for DOS text files)
 ---------------------------------------------------------------------
-cp:  Copy a file (to "stdout" or redircted) (tcp  for DOS text files)
+cp:  Copy a file (to "stdout" or redirected) (tcp  for DOS text files)
 ---------------------------------------------------------------------
 
  > cd MODEM_QFAX
@@ -815,7 +815,7 @@ qxltool:
 1.11       06/02/00          Fixed a bug in writing files where the
 			     begining of the name matched a directory.
 
-1.12       08/02/00          Fixed typo that causeed runtime failure
+1.12       08/02/00          Fixed typo that caused runtime failure
 			     on bigendian Unix systems.
 
 1.13	   ?		     Possibly some more bug fixes
@@ -829,9 +829,17 @@ qxltool:
 				Mandrake releases of Linux).
 			     Various other tidy ups.
 
+2.00        02-08/2019    Various changes. Rewrote format routine to match correct
+                    documentation. Changed header to allow compiling on 64 bit (linux).
+                    Renamed header fields to use English words. (I'm funny that way!)
+                    Header, dir, dirw commands added. Write added to match wr and to agree
+                    with the docs. Structure alignment fixed for 32 and 64 bit systems. Help
+                    command gets a brief description now.
+                    General tidy up and made it work. (Given RZ's lack of docs, he did very well
+                    but SMSQ, QPC and QXL etc could not use his version. Norman Dunbar.)
 
 Jonathan Hudson	<jrhudson@bigfoot.com>
 with help from
 Richard Zidlicky <Richard.Zidlicky@stud.informatik.uni-erlangen.de>
 
-
+Norman Dunbar <norman@dunbar-it.co.uk>.
