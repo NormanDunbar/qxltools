@@ -1248,8 +1248,11 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
     u_char *buf;
     int n, m, nt;
     u_short c;
+    u_short bytesPerGroup;
 
     e = readqldir (qxl, ld);
+
+    bytesPerGroup = SECTORSIZE * qxl->h.sectorsPerGroup;
 
     for (f = e + 1; f < e + ld->length / sizeof (QLDIR); f++)
     {
@@ -1268,9 +1271,9 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
         ld->length += sizeof (QLDIR);
     }
 
-    buf = (u_char *) alloca (qxl->h.sectorsPerGroup);
+    buf = (u_char *) alloca (bytesPerGroup);
 
-    memset (buf, 0, qxl->h.sectorsPerGroup);
+    memset (buf, 0, bytesPerGroup);
     memset (f, 0, sizeof (QLDIR));
 
     nt = 0;
@@ -1299,7 +1302,7 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
 #endif
         for (nr = -1, off = sizeof (QLDIR), c = 0; nr != 0;)
         {
-            ilen = qxl->h.sectorsPerGroup - off;
+            ilen = bytesPerGroup - off;
             if ((nr = fread (buf + off, 1, ilen, fp)) > 0)
             {
                 c = getcluster (qxl, c);
@@ -1307,7 +1310,7 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
                 {
                     f->map = c;
                 }
-                lseek (qxl->fd, c * qxl->h.sectorsPerGroup, SEEK_SET);
+                lseek (qxl->fd, c * bytesPerGroup, SEEK_SET);
                 write (qxl->fd, buf, nr + off);
                 off = 0;
                 nt += nr;
@@ -1322,8 +1325,8 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
     {
         f->updatedate = 0;
         f->map = c = getcluster (qxl, 0);
-        lseek (qxl->fd, c * qxl->h.sectorsPerGroup, SEEK_SET);
-        write (qxl->fd, buf, qxl->h.sectorsPerGroup);
+        lseek (qxl->fd, c * bytesPerGroup, SEEK_SET);
+        write (qxl->fd, buf, bytesPerGroup);
         f->type = 0xff;
     }
 
@@ -1395,31 +1398,57 @@ static void makenewfile (QXL * qxl, char *fn1, QLDIR * ld, FILE * fp, time_t fti
 
 /*--------------------------------------------------------------------
  * MKDIR Command.
- * Create a new directory.
+ *--------------------------------------------------------------------*/
+/** Creates a directory.
+ * This function is called from the mkdir command. It will create a new
+ * directory within the current one. 
+ * @param qxl - pointer to a QXL structure. Defines the current QXL file.
+ * @param mflag - not used.
+ * @param av - pointer to argument(s) = directory name.
+ * @return true if ok, false if no name given.
  *--------------------------------------------------------------------*/
 static int qmkdir (QXL * qxl, short mflag, char **av)
 {
-    char *p = *av;
+    char *p = *av;                  /**< Pointer to arguments list */
     QLDIR ld, *d = NULL;
     char *star;
 
+
+    /* We must have a directory name at least */
     if (p)
     {
-        char ocd[40], ndir[40],*q;
+        char ocd[40],       /* Full path of working directory */
+             ndir[40],      /* Full path of new directory */
+             *q;
+
         *ocd = 0;
+
+        /* If the current directory isn't the root, copy it as part of the new name. */
         if(qxl->curd.nlen)
         {
+            /* Build up the full path name to the new directory.
+             * Start with the current directory name. */
             memcpy(ocd, (char *)qxl->curd.name, qxl->curd.nlen);
             *(ocd + qxl->curd.nlen) = 0;
+
+            /* Copy current name next. */
             q = stpcpy(ndir, ocd);
+
+            /* Tag on a directory separator. */
             *q++ = '_';
+
+            /* And the new name to get the fill path. */
             strcpy(q, p);
             p = ndir;
+
+            /* TODO: What's this doing? Change directory */
             qcd(qxl, 0, 0);
         }
 
+        /* We better be open in read/write mode */
         if ((qxl->mode & O_RDWR) == O_RDWR)
         {
+            /* Start a check - there better not be a file with the new name. */
             char wild[42];
             p = stpcpy (wild, p);
             if (*(p - 1) == '_')
@@ -1438,7 +1467,7 @@ static int qmkdir (QXL * qxl, short mflag, char **av)
                 *star = 0;
             }
 
-            if (d)
+            if (d)      /* File already exists. */
             {
                 printf ("Cannot mkdir for %s as %-.*s exists\n",
                         wild, d->nlen, d->name);
@@ -1446,7 +1475,7 @@ static int qmkdir (QXL * qxl, short mflag, char **av)
             }
             else
             {
-
+                /* We can create a new directory. */
                 qxl->lastd = qxl->root;
 
                 find_file (qxl, wild, 0xff, &qxl->curd, DO_RECURSE | DO_BEST);
@@ -1456,15 +1485,17 @@ static int qmkdir (QXL * qxl, short mflag, char **av)
                     ld = qxl->curd;
                 }
 
+                /* Create the new file */
                 makenewfile (qxl, wild, &ld, NULL, 0);
             }
+
             if(*ocd)
             {
                 q = ocd;
                 qcd(qxl, 0, &q);
             }
         }
-        else
+        else        /* Nope, read only. Sigh! */
         {
             fputs ("read only filesystem\n", stderr);
         }

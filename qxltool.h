@@ -167,7 +167,7 @@ typedef struct
 } QXL;
 
 #ifndef O_BINARY
-# define O_BINARY 0
+# define O_BINARY 0                 /**< TODO: Purpose to be confirmed!  */
 #endif
 
 #ifndef offsetof
@@ -175,7 +175,8 @@ typedef struct
 #endif
 
 /** Internal callback function.
- * This defines a callback function used internally to TODO: Do what exactly?.
+ * This defines a callback function used internally to facilitate processdir() and
+ * file_file().
  * @param QXL pointer
  * @param QLDIR pointer
  * @param void pointer
@@ -209,14 +210,14 @@ typedef struct
     short flag;                     /**< TODO: Purpose to be confirmed!  */
 } JTBL;
 
-#define DO_RECURSE (1 << 0)
-#define DO_BEST    (1 << 1)
-#define DO_WILD    (1 << 2)
+#define DO_RECURSE (1 << 0)         /**< Indicates that we want to recurse into the current directory. */
+#define DO_BEST    (1 << 1)         /**< TODO: Purpose to be confirmed!  */
+#define DO_WILD    (1 << 2)         /**< TODO: Purpose to be confirmed!  */
 
-#define QX_TEXT    (1 << 0)
-#define QX_OPEN    (1 << 1)
-#define QX_FAIL_SILENTLY (1 << 14)
-#define QX_ARGV0_IS_FP (1 << 15)
+#define QX_TEXT    (1 << 0)         /**< TODO: Purpose to be confirmed!  */
+#define QX_OPEN    (1 << 1)         /**< TODO: Purpose to be confirmed!  */
+#define QX_FAIL_SILENTLY (1 << 14)  /**< TODO: Purpose to be confirmed!  */
+#define QX_ARGV0_IS_FP (1 << 15)    /**< TODO: Purpose to be confirmed!  */
 
 /* Interesting. I cannot compile with the option -O0 to turn off
  * optimisations to enable me to debug the code, unless I have these
