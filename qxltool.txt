@@ -40,6 +40,22 @@ License
 
 GPL: Please see file 'COPYING'.
 
+
+Compiling - If You Have To
+==========================
+
+WARNING: Do not compile as a 64bit utility. Because of the way the code 
+is currently written, a pointer is cast to an integer in some places. This 
+is bad, really bad, because pointers are 64 bits long while integers are 
+only 4 => a recipe for disaster, or at the very least, a SIGSEGV 
+exception. Ask me how I know? (NDunbar 2019.)
+
+The Makefile, under Unix, has been amended to compile in 32 bit mode. You will,
+if you choose to do this yourself, require on Linux, to install the 32 bit subsystems
+and libreadline-dev:i386 before compiling will work.
+
+
+
 Installation
 ============
 

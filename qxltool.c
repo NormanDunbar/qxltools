@@ -560,17 +560,18 @@ static QLDIR *readqldir (QXL * qxl, QLDIR * cur)
     u_char *buf, *p;
     int dlen, rlen;
     u_short fcluster;
+    u_long bytesPerGroup = qxl->h.sectorsPerGroup * SECTORSIZE;
 
     dlen = cur->length;
     p = buf = malloc (dlen);
 
     for (fcluster = cur->map; (fcluster && dlen);)
     {
-        lseek (qxl->fd, fcluster * qxl->h.sectorsPerGroup, SEEK_SET);
-        if (dlen < qxl->h.sectorsPerGroup)
+        lseek (qxl->fd, fcluster * bytesPerGroup, SEEK_SET);
+        if (dlen < bytesPerGroup)
             rlen = dlen;
         else
-            rlen = qxl->h.sectorsPerGroup;
+            rlen = bytesPerGroup;
         read (qxl->fd, p, rlen);
         p += rlen;
         dlen -= rlen;
@@ -588,6 +589,7 @@ static void writeqldir (QXL * qxl, QLDIR * cur, QLDIR * buf)
     int dlen, rlen;
     u_short clu;
     u_short ifree;
+    u_long bytesPerGroup = qxl->h.sectorsPerGroup * SECTORSIZE;
 
     dlen = cur->length;
     p = (u_char *) buf;
@@ -595,11 +597,11 @@ static void writeqldir (QXL * qxl, QLDIR * cur, QLDIR * buf)
 
     for (clu = cur->map; dlen;)
     {
-        lseek (qxl->fd, clu * qxl->h.sectorsPerGroup, SEEK_SET);
-        if (dlen < qxl->h.sectorsPerGroup)
+        lseek (qxl->fd, clu * bytesPerGroup, SEEK_SET);
+        if (dlen < bytesPerGroup)
             rlen = dlen;
         else
-            rlen = qxl->h.sectorsPerGroup;
+            rlen = bytesPerGroup;
         write (qxl->fd, p, rlen);
         p += rlen;
         dlen -= rlen;
@@ -817,8 +819,9 @@ static void cpfile (QXL * qxl, QLDIR * d)
     int dlen, rlen;
     u_short cluster;
     short off = sizeof (QLDIR);
+    u_long bytesPerGroup = qxl->h.sectorsPerGroup * SECTORSIZE;
 
-    buf = (u_char *) alloca (qxl->h.sectorsPerGroup);
+    buf = (u_char *) alloca (bytesPerGroup);
     dlen = d->length;
     cluster = d->map;
 
@@ -826,11 +829,11 @@ static void cpfile (QXL * qxl, QLDIR * d)
     {
         for (cluster = d->map; cluster; cluster = nextcluster (qxl, cluster, 0))
         {
-            lseek (qxl->fd, cluster * qxl->h.sectorsPerGroup, SEEK_SET);
-            if (dlen < qxl->h.sectorsPerGroup)
+            lseek (qxl->fd, cluster * bytesPerGroup, SEEK_SET);
+            if (dlen < bytesPerGroup)
                 rlen = dlen;
             else
-                rlen = qxl->h.sectorsPerGroup;
+                rlen = bytesPerGroup;
             read (qxl->fd, buf, rlen);
 
             fwrite (buf + off, 1, rlen - off, qxl->fp);
@@ -1141,7 +1144,7 @@ static double unify (QXL * qxl, u_short x, char *f)
 {
     double ts;
 
-    ts = x * qxl->h.sectorsPerGroup;
+    ts = x * qxl->h.sectorsPerGroup * SECTORSIZE;
     if (ts > 1024 * 1024)
     {
         ts /= 1024 * 1024;
@@ -1187,7 +1190,7 @@ static int qinfo (QXL * qxl, short mflag, char **p)
     }
 
     /* Group/cluster size in bytes. */
-    fprintf (qxl->fp, "\nGroup size %d bytes\n", qxl->h.sectorsPerGroup);
+    fprintf (qxl->fp, "\nGroup size %d bytes\n", (qxl->h.sectorsPerGroup * SECTORSIZE));
 
     /* Total number of groups on QXL file, plus file size in KB or MB. */
     fprintf (qxl->fp, "Total number of groups %d (%.2f %cb, on disk %d b)\n",
@@ -1514,6 +1517,7 @@ static int qwrite (QXL * qxl, short mflag, char **av)
     QLDIR ld, dl, *d;
     long dlen = 0;
     char *fn0, *fn1;
+    u_long bytesPerGroup = qxl->h.sectorsPerGroup * SECTORSIZE;
 
     int rv = -1;
     char ntmp[40];
@@ -1601,13 +1605,13 @@ static int qwrite (QXL * qxl, short mflag, char **av)
 
                     fstat (fileno (fp), &st);
                     need = ((sizeof (QLDIR) + (long)st.st_size) - dlen) /
-                           qxl->h.sectorsPerGroup;
+                           bytesPerGroup;
 
                     if (need > (qxl->h.freeGroups - 1))
                     {
                         fprintf (stderr,
-                                 "%s %d No room (%d free sectors, %ld b wanted %d)\n",
-                                 fn0, qxl->h.sectorsPerGroup,
+                                 "%s %ld No room (%d free sectors, %ld b wanted %d)\n",
+                                 fn0, bytesPerGroup,
                                  qxl->h.freeGroups,
                                  (long) st.st_size + sizeof (QLDIR),
                                  need
